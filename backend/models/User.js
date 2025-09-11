@@ -59,6 +59,12 @@ const userSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+// lastLogin: updated at successful login
+userSchema.add({
+  lastLogin: { type: Date },
+  lastActiveAt: { type: Date },
+});
+
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 

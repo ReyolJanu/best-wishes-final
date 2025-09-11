@@ -12,11 +12,14 @@ UsersFilters.propTypes = {
     dateRange: PropTypes.string.isRequired,
     minSpent: PropTypes.string.isRequired,
     maxSpent: PropTypes.string.isRequired,
+    dateFrom: PropTypes.string,
+    dateTo: PropTypes.string,
   }).isRequired,
   onFiltersChange: PropTypes.func.isRequired,
+  onExport: PropTypes.func,
 };
 
-export function UsersFilters({ filters, onFiltersChange }) {
+export function UsersFilters({ filters, onFiltersChange, onExport }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -36,14 +39,14 @@ export function UsersFilters({ filters, onFiltersChange }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => onExport && onExport()}>
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button className="gap-2">
+          {/* <Button className="gap-2">
             <UserPlus className="h-4 w-4" />
             Add User
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -77,10 +80,24 @@ export function UsersFilters({ filters, onFiltersChange }) {
           />
         </div>
 
-        <Button variant="outline" className="gap-2">
-          <Calendar className="h-4 w-4" />
-          Date Range
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-500" />
+            <Input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => onFiltersChange({ ...filters, dateFrom: e.target.value })}
+              className="w-44"
+            />
+            <span className="text-gray-500">to</span>
+            <Input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => onFiltersChange({ ...filters, dateTo: e.target.value })}
+              className="w-44"
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

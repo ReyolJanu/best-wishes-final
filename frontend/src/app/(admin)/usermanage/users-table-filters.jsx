@@ -33,7 +33,9 @@ export function UsersTableFilters() {
           <Download className="h-4 w-4" />
           Export
         </Button>
-        <Button>Add User</Button>
+        <Button>
+          Add User
+        </Button>
       </div>
     </div>
   )
