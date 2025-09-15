@@ -448,6 +448,19 @@ const cancelCollaborativePurchase = async (req, res) => {
   }
 };
 
+// Fetch all collaborative purchases
+const getAllCollaborativePurchases = async (req, res) => {
+  console.log('getAllCollaborativePurchases function called');
+  try {
+    const collaborativePurchases = await CollaborativePurchase.find();
+    console.log('All Collaborative Purchases:', collaborativePurchases);
+    res.json({ success: true, collaborativePurchases });
+  } catch (err) {
+    console.error('Error in getAllCollaborativePurchases:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
 // Helper functions
 const generatePaymentLink = () => {
   return crypto.randomBytes(32).toString('hex');
@@ -754,4 +767,5 @@ module.exports = {
   declineParticipation,
   getUserCollaborativePurchases,
   cancelCollaborativePurchase,
+  getAllCollaborativePurchases,
 };

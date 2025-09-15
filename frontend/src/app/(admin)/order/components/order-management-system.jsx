@@ -852,6 +852,16 @@ export function OrderManagementSystem() {
     }
   };
 
+  const fetchCollaborativePurchases = async () => {
+    try {
+      console.log("Fetching all collaborative purchases...");
+      const response = await axios.get(`${API_BASE_URL}/collaborative-purchases/all`);
+      console.log("Collaborative Purchases Data:", response.data);
+    } catch (error) {
+      console.error("Error fetching collaborative purchases:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchAllOrders = async () => {
       try {
@@ -924,6 +934,7 @@ export function OrderManagementSystem() {
     }
 
     fetchAllOrders()
+    fetchCollaborativePurchases();
   }, [])
 
   const printAllPackedOrders = () => {

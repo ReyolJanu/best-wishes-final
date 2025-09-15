@@ -6,6 +6,9 @@ const { isAuthenticated } = require('../middleware/authMiddleware');
 // Create collaborative purchase
 router.post('/', isAuthenticated, collaborativePurchaseController.createCollaborativePurchase);
 
+// Fetch all collaborative purchases (must come before /:id route)
+router.get('/all', collaborativePurchaseController.getAllCollaborativePurchases);
+
 // Get collaborative purchase details
 router.get('/:id', isAuthenticated, collaborativePurchaseController.getCollaborativePurchase);
 
