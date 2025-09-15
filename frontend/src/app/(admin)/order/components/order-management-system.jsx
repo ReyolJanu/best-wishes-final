@@ -856,7 +856,31 @@ export function OrderManagementSystem() {
     try {
       console.log("Fetching all collaborative purchases...");
       const response = await axios.get(`${API_BASE_URL}/collaborative-purchases/all`);
-      console.log("Collaborative Purchases Data:", response.data);
+      console.log("API Response:", response.data); // Debugging log
+
+      // Fix: Access the correct nested data structure
+      const allPurchases = Array.isArray(response.data.collaborativePurchases) 
+        ? response.data.collaborativePurchases 
+        : [];
+
+      // Filter purchases with status "Processing" (exact match and case-insensitive)
+      const processingPurchases = allPurchases.filter(purchase => {
+        // Debug each purchase's status
+        console.log(`Checking purchase ${purchase._id || purchase.id}:`, {
+          status: purchase.status,
+          statusType: typeof purchase.status,
+          statusLength: purchase.status ? purchase.status.length : 0
+        });
+        
+        // Multiple checks to ensure we catch the "Processing" status
+        return purchase.status === "Processing" || 
+               (purchase.status && purchase.status.trim() === "Processing") ||
+               (purchase.status && purchase.status.trim().toLowerCase() === "processing");
+      });
+
+      // Log only the filtered purchases
+      console.log("Collaborative Purchases with 'Processing' status:", processingPurchases);
+      console.log("Number of processing purchases found:", processingPurchases.length);
     } catch (error) {
       console.error("Error fetching collaborative purchases:", error);
     }
