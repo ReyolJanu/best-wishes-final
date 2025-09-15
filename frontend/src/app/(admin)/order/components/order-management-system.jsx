@@ -34,6 +34,7 @@ import {
 const statusColors = {
   pending: "bg-yellow-100 text-yellow-800",
   processing: "bg-blue-100 text-blue-800",
+  accepted: "bg-green-100 text-green-800",
   shipped: "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
@@ -65,18 +66,20 @@ export function OrderManagementSystem() {
   const [toDate, setToDate] = useState(null)
 
   const filteredOrders = orders.filter((order) => {
-    if (!order || !order.user || !order.items) return false
+    if (!order || !order.items) return false
 
     const matchesSearch =
-      (order.user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.user.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerPhone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.referenceCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.items.some((item) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))) ?? false
 
     const matchesTab =
-      (activeTab === "accepted" && order.status === "processing") ||
+      (activeTab === "accepted" && (order.status === "processing" || order.status === "accepted")) ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
-      (activeTab === "all" && order.status === "delivered") // Show ALL orders regardless of status in All tab
+      (activeTab === "all") // Show ALL orders regardless of status in All tab
 
     // Apply date filtering only for "All" tab
     let matchesDateFilter = true;
@@ -863,8 +866,8 @@ export function OrderManagementSystem() {
         ? response.data.collaborativePurchases 
         : [];
 
-      // Filter purchases with status "Processing" (exact match and case-insensitive)
-      const processingPurchases = allPurchases.filter(purchase => {
+      // Filter purchases with status "Processing" and "Accepted" for different tabs
+      const relevantPurchases = allPurchases.filter(purchase => {
         // Debug each purchase's status
         console.log(`Checking purchase ${purchase._id || purchase.id}:`, {
           status: purchase.status,
@@ -872,23 +875,97 @@ export function OrderManagementSystem() {
           statusLength: purchase.status ? purchase.status.length : 0
         });
         
-        // Multiple checks to ensure we catch the "Processing" status
+        // Include both Processing and Accepted statuses
         return purchase.status === "Processing" || 
+               purchase.status === "Accepted" ||
                (purchase.status && purchase.status.trim() === "Processing") ||
-               (purchase.status && purchase.status.trim().toLowerCase() === "processing");
+               (purchase.status && purchase.status.trim() === "Accepted") ||
+               (purchase.status && purchase.status.trim().toLowerCase() === "processing") ||
+               (purchase.status && purchase.status.trim().toLowerCase() === "accepted");
       });
 
-      // Log only the filtered purchases
-      console.log("Collaborative Purchases with 'Processing' status:", processingPurchases);
-      console.log("Number of processing purchases found:", processingPurchases.length);
+      // Map collaborative purchases to the same structure as orders
+      const mappedPurchases = relevantPurchases.map((purchase) => ({
+        id: purchase._id,
+        _id: purchase._id,
+        createdAt: purchase.createdAt,
+        orderedAt: purchase.createdAt,
+        orderDate: purchase.createdAt,
+        status: purchase.status.toLowerCase(), // Convert to lowercase for consistency
+        total: purchase.totalAmount || 0,
+        totalAmount: purchase.totalAmount || 0,
+        statusHistory: [],
+        user: {
+          firstName: 'Collaborative',
+          lastName: 'Purchase',
+          phone: 'N/A',
+          email: 'N/A',
+          address: 'N/A'
+        },
+        items: purchase.isMultiProduct 
+          ? (purchase.products || []).map((product, index) => ({
+              id: product._id || `collab-product-${index}`,
+              product: product._id || '',
+              name: product.name || 'Unknown Product',
+              price: product.price || 0,
+              quantity: product.quantity || 1,
+              image: product.image || '/placeholder.svg',
+              sku: `COLLAB-${purchase._id.slice(-6)}-${index + 1}`,
+              category: 'Collaborative',
+              weight: '1.0 lbs',
+              status: 'in_stock'
+            }))
+          : [{
+              id: purchase.product || `collab-item-${purchase._id}`,
+              product: purchase.product || '',
+              name: purchase.productName || 'Unknown Product',
+              price: purchase.productPrice || 0,
+              quantity: purchase.quantity || 1,
+              image: '/placeholder.svg',
+              sku: `COLLAB-${purchase._id.slice(-6)}`,
+              category: 'Collaborative',
+              weight: '1.0 lbs',
+              status: 'in_stock'
+            }],
+        deliveryNotes: '',
+        trackingNumber: '',
+        referenceCode: `COLLAB-${purchase._id.slice(-6)}`,
+        orderId: purchase._id,
+        priority: 'normal',
+        orderSource: 'Collaborative Purchase',
+        customerName: 'Collaborative Purchase',
+        customerPhone: 'N/A',
+        customerEmail: 'N/A',
+        customerNotes: '',
+        packingStatus: 'not_packed',
+        assignedStaff: '',
+        codAmount: 0,
+        paymentMethod: 'collaborative_payment',
+        isGift: false,
+        giftWrap: false,
+        giftMessage: '',
+        address: 'N/A',
+        billingAddress: 'N/A',
+        estimatedTime: '2-3 days',
+        shippingMethod: 'standard',
+        specialInstructions: '',
+        internalNotes: ''
+      }));
+
+      console.log("Mapped Collaborative Purchases:", mappedPurchases);
+      console.log("Number of relevant purchases found:", mappedPurchases.length);
+      
+      return mappedPurchases;
     } catch (error) {
       console.error("Error fetching collaborative purchases:", error);
+      return [];
     }
   };
 
   useEffect(() => {
-    const fetchAllOrders = async () => {
+    const fetchAllData = async () => {
       try {
+        // Fetch orders first
         const response = await axios.get(`${API_BASE_URL}/orders/all`)
         console.log('API Response:', response.data.orders);
 
@@ -944,21 +1021,30 @@ export function OrderManagementSystem() {
           internalNotes: ''
         }))
         
-        // Debug: Check what statuses we have
+        // Debug: Check what statuses we have for orders
         const statusCounts = ordersData.reduce((acc, order) => {
           acc[order.status] = (acc[order.status] || 0) + 1;
           return acc;
         }, {});
         console.log('Order status counts:', statusCounts);
         
-        setOrders(ordersData)
+        // Fetch collaborative purchases
+        const collaborativePurchases = await fetchCollaborativePurchases();
+        
+        // Combine data: Orders first (priority), then collaborative purchases
+        const combinedData = [...ordersData, ...collaborativePurchases];
+        
+        console.log('Combined data count:', combinedData.length);
+        console.log('Orders count:', ordersData.length);
+        console.log('Collaborative purchases count:', collaborativePurchases.length);
+        
+        setOrders(combinedData)
       } catch (error) {
-        console.error("Error fetching all orders:", error)
+        console.error("Error fetching all data:", error)
       }
     }
 
-    fetchAllOrders()
-    fetchCollaborativePurchases();
+    fetchAllData()
   }, [])
 
   const printAllPackedOrders = () => {
@@ -1123,8 +1209,11 @@ export function OrderManagementSystem() {
                                   <Badge variant="outline" className={priorityColors[order.priority]}>
                                     {order.priority}
                                   </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    {order.orderSource}
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs ${order.orderSource === 'Collaborative Purchase' ? 'bg-orange-100 text-orange-800 border-orange-300' : ''}`}
+                                  >
+                                    {order.orderSource === 'Collaborative Purchase' ? '🤝 ' : ''}{order.orderSource}
                                   </Badge>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
