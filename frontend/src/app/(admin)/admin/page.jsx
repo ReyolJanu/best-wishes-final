@@ -82,12 +82,16 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       await withLoading(async () => {
         try {
-          // Simulate API call - replace with actual API call
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard`);
+          // Use existing admin users endpoint for dashboard data
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, { 
+            credentials: 'include' 
+          });
           const data = await response.json();
           setDashboardData(data);
         } catch (error) {
           console.error('Error fetching dashboard data:', error);
+          // Set empty data to prevent further errors
+          setDashboardData({ users: [] });
         }
       });
     };

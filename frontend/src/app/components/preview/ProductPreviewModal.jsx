@@ -34,7 +34,7 @@ export default function ProductPreviewModal({ product, categories, occasions, re
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [personalizationText, setPersonalizationText] = useState("")
-  const [selectedDate, setSelectedDate] = useState()
+  const [selectedDate, setSelectedDate] = useState(null)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
 
   const discountPercentage = Math.round(((product.retailPrice - product.salePrice) / product.retailPrice) * 100)

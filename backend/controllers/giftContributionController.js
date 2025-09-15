@@ -2,16 +2,8 @@
 
 const GiftContribution = require('../models/GiftContribution');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../config/emailConfig');
 require('dotenv').config();
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_APP_PASSWORD,
-  },
-});
 
 
 
@@ -51,11 +43,10 @@ const createContribution = async (req, res) => {
 
     // Send Email Invitations
     for (const email of participants) {
-      await transporter.sendMail({
-  from: `"BEST WISHES" <${process.env.EMAIL}>`,
-  to: email,
-  subject: `🎁 You're Invited to Contribute a Gift!`,
-  html: `
+      await sendEmail({
+        to: email,
+        subject: `🎁 You're Invited to Contribute a Gift!`,
+        html: `
    <!DOCTYPE html>
   <html lang="en">
     <head>
@@ -110,8 +101,8 @@ const createContribution = async (req, res) => {
       </table>
     </body>
   </html>
-  `
-});
+  `,
+      });
 
     }
 

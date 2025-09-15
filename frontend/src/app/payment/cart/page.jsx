@@ -10,7 +10,7 @@ import { Elements, CardElement, useElements, useStripe } from "@stripe/react-str
 import axios from "axios";
 import { toast, Toaster } from "sonner";
 import { clearCart } from "../../slices/cartSlice";
-import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/page';
+import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/CollaborativePurchaseModal';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 

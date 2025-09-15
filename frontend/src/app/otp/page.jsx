@@ -94,7 +94,6 @@ export default function OTPPage() {
       // Here you would typically call your API to resend OTP
       // await axios.post('/api/resend-otp', { email: userEmail })
       
-      console.log('OTP resent successfully')
     } catch (error) {
       setError('Failed to resend OTP. Please try again.')
     }
@@ -185,9 +184,10 @@ export default function OTPPage() {
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-[#822be2] hover:text-[#822be2]/80 transition-colors mb-6"
+          aria-label="Go back to previous page"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span onClick={() => handleNavigation('/signup')}  className="text-sm font-medium">Back to Signup</span>
+          <span className="text-sm font-medium">Back to Signup</span>
         </button>
 
         {/* OTP Form */}
@@ -277,6 +277,7 @@ export default function OTPPage() {
               type="button"
               onClick={handleResend}
               disabled={isResendDisabled}
+              aria-label="Resend verification code"
               className={`
                 flex items-center justify-center gap-2 mx-auto text-sm font-medium transition-colors
                 ${isResendDisabled 
@@ -299,6 +300,7 @@ export default function OTPPage() {
               type="button"
               onClick={() => router.push('/contact')}
               className="text-[#822be2] hover:underline font-medium"
+              aria-label="Contact support for help"
             >
               contact support
             </button>

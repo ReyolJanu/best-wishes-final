@@ -1,14 +1,8 @@
 const EventReminder = require('../models/EventReminder');
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../config/emailConfig');
 require('dotenv').config();
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_APP_PASSWORD,
-  },
-});
+
 
 async function checkAndSendReminders() {
   const now = new Date();
@@ -24,18 +18,10 @@ async function checkAndSendReminders() {
     }).populate('user');
 
     for (const reminder of reminders) {
-    //   await transporter.sendMail({
-    //     from: `"BEST WISHES" <${process.env.EMAIL}>`,
-    //     to: reminder.user.email,
-    //     subject: `⏰ Reminder: ${reminder.event}`,
-    //     text: reminder.remindermsg,
-    //   });
-
-    await transporter.sendMail({
-  from: `"BEST WISHES" <${process.env.EMAIL}>`,
-  to: reminder.user.email,
-  subject: `⏰ Reminder for: ${reminder.event}`,
-  html: `
+    await sendEmail({
+      to: reminder.user.email,
+      subject: `⏰ Reminder for: ${reminder.event}`,
+      html: `
     <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
       <div style="max-width: 600px; margin: auto; background-color: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
         <div style="background-color: #6a1b9a; padding: 20px; color: white; text-align: center;">
@@ -67,8 +53,7 @@ async function checkAndSendReminders() {
       </div>
     </div>
   `,
-});
-
+    });
 
       reminder.sent = true;
       await reminder.save();
@@ -76,7 +61,7 @@ async function checkAndSendReminders() {
       console.log(`✅ Reminder email sent to ${reminder.user.email}`);
     }
   } catch (error) {
-    console.error('❌ Error sending reminders:', error);
+    console.error('❌ Error sending reminders:', error.message);
   }
 }
 

@@ -16,7 +16,7 @@ const userSlice = createSlice({
                 role: action.payload.role,
             }
         },
-        userLogout(state, action) {
+        userLogout(state) {
             // Clear the redux state
             state.isAuthenticated = false;
             state.user = null;

@@ -1,17 +1,10 @@
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../config/emailConfig');
 const User = require('../models/User');
 
 async function sendReminderEmail(user, reminder) {
   if (!user || !user.email) return;
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL,
-      pass: process.env.EMAIL_APP_PASSWORD,
-    },
-  });
-  await transporter.sendMail({
-    from: `"BEST WISHES" <${process.env.EMAIL}>`,
+  
+  await sendEmail({
     to: user.email,
     subject: `⏰ Reminder for: ${reminder.event}`,
     html: `

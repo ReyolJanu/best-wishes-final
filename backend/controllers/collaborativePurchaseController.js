@@ -2,17 +2,9 @@ const CollaborativePurchase = require('../models/CollaborativePurchase');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../config/emailConfig');
 const crypto = require('crypto');
 require('dotenv').config();
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_APP_PASSWORD,
-  },
-});
 
 // Create collaborative purchase
 const createCollaborativePurchase = async (req, res) => {
@@ -298,7 +290,7 @@ const processPayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment already processed' });
     }
 
-    if (collaborativePurchase.status !== 'pending') {
+    if (collaborativePurchase.status !== 'Processing') {
       return res.status(400).json({ message: 'Collaborative purchase is no longer active' });
     }
 
@@ -421,7 +413,7 @@ const cancelCollaborativePurchase = async (req, res) => {
       return res.status(403).json({ message: 'Only the creator can cancel this collaborative purchase' });
     }
 
-    if (collaborativePurchase.status !== 'pending') {
+    if (collaborativePurchase.status !== 'Processing') {
       return res.status(400).json({ message: 'Cannot cancel completed or already cancelled purchase' });
     }
 
@@ -505,8 +497,7 @@ const sendInvitationEmail = async (email, paymentLink, data) => {
     totalAmount
   });
   
-  await transporter.sendMail({
-    from: `"BEST WISHES" <${process.env.EMAIL}>`,
+  await sendEmail({
     to: email,
     subject: `🎁 You're Invited to a Collaborative Purchase!`,
     html: `
@@ -582,8 +573,7 @@ const sendInvitationEmail = async (email, paymentLink, data) => {
 const sendCreatorConfirmationEmail = async (email, data) => {
   const { productName, productPrice, shareAmount, deadline, participants, collaborativePurchaseId, products, isMultiProduct, totalAmount } = data;
   
-  await transporter.sendMail({
-    from: `"BEST WISHES" <${process.env.EMAIL}>`,
+  await sendEmail({
     to: email,
     subject: `✅ Collaborative Purchase Created Successfully!`,
     html: `
@@ -656,8 +646,7 @@ const sendCompletionNotifications = async (collaborativePurchase, order) => {
   ];
 
   for (const email of allEmails) {
-    await transporter.sendMail({
-      from: `"BEST WISHES" <${process.env.EMAIL}>`,
+    await sendEmail({
       to: email,
       subject: `🎉 Collaborative Purchase Completed!`,
       html: `
@@ -705,8 +694,7 @@ const sendCancellationNotifications = async (collaborativePurchase) => {
   ];
 
   for (const email of allEmails) {
-    await transporter.sendMail({
-      from: `"BEST WISHES" <${process.env.EMAIL}>`,
+    await sendEmail({
       to: email,
       subject: `❌ Collaborative Purchase Cancelled`,
       html: `

@@ -85,7 +85,6 @@ export default function FancyCarousel() {
   useEffect(() => {
     dispatch(getProducts())
     dispatch(getCategories())
-    console.log("checking", allProducts)
 
     // Fetch categories from backend
     const fetchCategories = async () => {
@@ -148,12 +147,10 @@ export default function FancyCarousel() {
       try {
         const response = await fetch(`${apiUrl}/events?isActive=true`);
         const data = await response.json();
-        console.log("API Response:", data); // Log the API response
         if (data.events && data.events.length > 0) {
           const activeEvents = data.events.filter(event => event.isActive); // Filter active events
           setEvents(activeEvents);
         } else {
-          console.warn("No events found or API response invalid:", data);
           setEvents([]);
         }
       } catch (error) {
@@ -509,7 +506,7 @@ export default function FancyCarousel() {
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 truncate">{event.name}</h3>
                     <p className="text-gray-600 text-sm mt-1">
-                      <span className="animate-blink font-bold text-purple-600 bg-gradient-to-r from-pink-400 via-yellow-400 to-purple-400 bg-clip-text text-transparent">
+                      <span className="animate-blink font-bold bg-gradient-to-r from-pink-400 via-yellow-400 to-purple-400 bg-clip-text text-transparent">
                         {new Date(event.date).toLocaleDateString()}
                       </span>
                     </p>
@@ -540,7 +537,7 @@ export default function FancyCarousel() {
             <Button
               variant="ghost"
               className="text-purple-600 hover:text-purple-700 hover:cursor-pointer"
-              onClick={() => router.push("/allProducts")}>
+              onClick={() => router.push("/allProducts/showcase")}>
               Explore more <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
@@ -616,23 +613,33 @@ export default function FancyCarousel() {
         {/* Services Cards */}
         <section className="space-y-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Our Services</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {cards.map((card, index) => (
-              <Card key={index} className="border-2 border-purple-200 hover:border-purple-400 transition-colors">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center gap-3 bg-purple-600 text-white p-3 rounded-full">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl">
-                      {card.icon}
-                    </div>
-                    <h3 className="font-semibold text-sm sm:text-base">{card.title}</h3>
+              <div
+                key={index}
+                className="relative group rounded-2xl bg-white/70 backdrop-blur-md border-0 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                style={{
+                  border: "1.5px solid #d1b3ff",
+                  boxShadow: "0 8px 32px 0 rgba(130,43,226,0.10)",
+                }}
+              >
+                {/* Gradient Accent Bar */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-400 to-yellow-400" />
+                <div className="p-7 flex flex-col items-center gap-4">
+                  {/* Icon with Glow */}
+                  <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-pink-100 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-3xl">{card.icon}</span>
                   </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">{card.description}</p>
-                  <Button variant="outline" className="w-full border-purple-600 text-purple-600 hover:bg-purple-50">
+                  <h3 className="font-bold text-base sm:text-lg text-purple-700 text-center">{card.title}</h3>
+                  <p className="text-gray-600 text-sm text-center">{card.description}</p>
+                  <Button
+                    variant="outline"
+                    className="w-full border-2 border-purple-600 text-purple-700 font-semibold rounded-lg hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-500 hover:text-white transition-all duration-200"
+                  >
                     Explore
                   </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </section>

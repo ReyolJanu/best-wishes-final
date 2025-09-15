@@ -1,5 +1,6 @@
 
 'use client';
+
 import { useState } from 'react';
 import axios from 'axios';
 
@@ -8,6 +9,8 @@ export default function EmailForm() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState('');
+  const [image, setImage] = useState(null);
+  const [uploadedUrl, setUploadedUrl] = useState('');
 
   const sendEmail = async (e) => {
     e.preventDefault();
@@ -31,16 +34,8 @@ export default function EmailForm() {
     } catch (error) {
       console.error('Axios error:', error);
       setStatus('❌ An error occurred while sending.');
-
-
-'use client';
-
-import { useState } from 'react';
-import axios from 'axios';
-
-export default function ImageUpload() {
-  const [image, setImage] = useState(null);
-  const [uploadedUrl, setUploadedUrl] = useState('');
+    }
+  };
 
   const handleUpload = async () => {
     if (!image) {
@@ -59,12 +54,10 @@ export default function ImageUpload() {
       setUploadedUrl(res.data.data.url);
     } catch (err) {
       console.error('Upload failed:', err);
-
     }
   };
 
   return (
-
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-2xl shadow-md border border-gray-200">
       <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">Send Email</h2>
       <form onSubmit={sendEmail} className="space-y-4">
@@ -110,19 +103,20 @@ export default function ImageUpload() {
       </form>
       {status && <p className="text-center mt-4 text-sm text-gray-600">{status}</p>}
 
-    <div className="p-4">
-      <input type="file" onChange={(e) => setImage(e.target.files[0])} />
-      <button onClick={handleUpload} className="mt-2 bg-blue-500 px-4 py-2 text-white rounded">
-        Upload
-      </button>
+      <div className="p-4 mt-6 border-t">
+        <h3 className="text-lg font-medium mb-2">Upload Image</h3>
+        <input type="file" onChange={(e) => setImage(e.target.files[0])} />
+        <button onClick={handleUpload} className="mt-2 bg-blue-500 px-4 py-2 text-white rounded">
+          Upload
+        </button>
 
-      {uploadedUrl && (
-        <div className="mt-4">
-          <p>Uploaded Image:</p>
-          <img src={uploadedUrl} alt="Uploaded" width={300} />
-        </div>
-      )}
-
+        {uploadedUrl && (
+          <div className="mt-4">
+            <p>Uploaded Image:</p>
+            <img src={uploadedUrl} alt="Uploaded" width={300} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

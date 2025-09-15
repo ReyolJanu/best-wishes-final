@@ -10,7 +10,7 @@ import { userLogout } from '@/app/slices/userSlice';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toast } from 'sonner';
-import ReminderGift from '../../modal/reminder/page';
+import ReminderGift from '../../modal/reminder/ReminderModal';
 import { Heart } from 'lucide-react';
 import { clearCart } from '@/app/slices/cartSlice';
 import { clearWishlist } from '@/app/slices/wishlistSlice';

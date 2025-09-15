@@ -1,9 +1,9 @@
 import React from 'react'
-import Manageproducts from '../../components/manageproducts/page'
+import ProductDashboard from '../../(admin)/prodectmanage/ProductDashboard'
 const page = () => {
   return (
     <div>
-        <Manageproducts/>
+        <ProductDashboard/>
     </div>
   )
 }

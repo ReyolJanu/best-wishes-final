@@ -305,7 +305,7 @@ export default function CollaborativePaymentPage() {
                   }`}>
                     {p.paymentStatus === 'paid' ? 'Paid' :
                      p.paymentStatus === 'declined' ? 'Declined' :
-                     'Pending'}
+                     'Processing'}
                   </span>
                 </div>
               ))}

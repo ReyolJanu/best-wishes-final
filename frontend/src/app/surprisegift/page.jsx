@@ -4,7 +4,7 @@ import Navbar from '../components/navBar/page'
 import Image from 'next/image';
 import { RiDeleteBin6Line } from "react-icons/ri";
 import Footer from '../components/footer/page'
-import SurpriseGiftModal from '../modal/surpriseGift/page'
+import SurpriseGiftModal from '../modal/surpriseGift/SurpriseGiftModal'
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { toast } from 'sonner';

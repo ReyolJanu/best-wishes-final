@@ -9,7 +9,7 @@ import { OrderDetails } from "./order-details"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 
 // Mock data for orders
-export const mockOrders = [
+const mockOrders = [
   {
     id: "12345",
     customerName: "John Doe",

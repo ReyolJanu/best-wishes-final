@@ -16,7 +16,7 @@ import { addToCart } from '../../slices/cartSlice';
 import { AiFillStar, AiOutlineStar, AiTwotoneStar } from 'react-icons/ai';
 import axios from 'axios';
 import { toast, Toaster } from 'sonner';
-import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/page';
+import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/CollaborativePurchaseModal';
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"

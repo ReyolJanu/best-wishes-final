@@ -137,6 +137,10 @@ exports.loginUser = async (req, res) => {
       });
     }
 
+    // update lastLogin timestamp on successful login
+    user.lastLogin = new Date();
+    await user.save({ validateModifiedOnly: true });
+
     const token = generateToken(user);
 
     //  Set cookie

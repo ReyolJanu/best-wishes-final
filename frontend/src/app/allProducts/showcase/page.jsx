@@ -16,6 +16,7 @@ export default function ShowcasePage() {
   return (
     <Providers>
       <div className="container mx-auto px-4 py-8">
+        
         {/* Header with cart */}
         <div className="flex justify-between items-center mb-6">
           <nav className="flex text-sm">

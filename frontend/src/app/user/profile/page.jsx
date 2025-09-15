@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { FiMail, FiPhone, FiMapPin, FiShoppingBag, FiLogOut, FiEdit2, FiUser, FiEye, FiEyeOff, FiClock, FiGift } from "react-icons/fi";
-import Navbar from "@/app/components/navbar/page";
+import Navbar from "@/app/components/navBar/page";
 import axios from "axios";
 import { toast, Toaster } from 'sonner';
 import { FaUser } from "react-icons/fa";
@@ -16,6 +16,7 @@ import { userLogout } from '@/app/slices/userSlice';
 import { clearCart } from '@/app/slices/cartSlice';
 import { clearWishlist } from '@/app/slices/wishlistSlice';
 import { fetchUserProfile } from '../../actions/userActions'; // import at the top
+import Footer from "../../components/footer/page";
 
 export default function ProfilePage() {
   const { user } = useSelector(state => state.userState);
@@ -57,6 +58,10 @@ export default function ProfilePage() {
   const [surpriseGifts, setSurpriseGifts] = useState([]);
   const [surpriseLoading, setSurpriseLoading] = useState(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState('personal');
+  const [activeBottomTab, setActiveBottomTab] = useState('orders');
+
   useEffect(() => {
     if (!user) {
       router.push("/login");
@@ -95,7 +100,6 @@ export default function ProfilePage() {
       dispatch(userLogout());
       router.push('/');
     } catch (error) {
-      console.error('Logout error:', error);
       toast.error('Failed to logout. Please try again.');
     }
     dispatch(clearCart());
@@ -215,19 +219,15 @@ export default function ProfilePage() {
     formData.append('file', selectedFile);
     setUploading(true);
     try {
-      console.log('Uploading profile image...', selectedFile.name);
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/upload/single`, formData, {
         withCredentials: true,
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       
-      console.log('Upload response:', res.data);
-      
       // Store the uploaded image URL
       const uploadedImageUrl = res.data.data.url;
       setProfileImage(uploadedImageUrl);
       
-      console.log('Saving profile with new image URL:', uploadedImageUrl);
       
       // Immediately save the profile with the new image
       await handleSaveChanges(uploadedImageUrl);
@@ -236,7 +236,6 @@ export default function ProfilePage() {
       setPreviewUrl("");
       toast.success('Profile image uploaded and saved successfully!');
     } catch (err) {
-      console.error('Upload error:', err);
       toast.error('Failed to upload image');
     } finally {
       setUploading(false);
@@ -258,20 +257,15 @@ export default function ProfilePage() {
       // Use the new profile image if provided, otherwise use the current profileImage state or user's existing image
       const imageToSave = newProfileImage || profileImage || user.profileImage || "";
       
-      console.log('Saving profile changes:', { phone, address, profileImage: imageToSave });
-      
       const res = await axios.put(
         `${process.env.NEXT_PUBLIC_API_URL}/updateprofile`,
         { phone, address, profileImage: imageToSave },
         { withCredentials: true }
       );
       
-      console.log('Profile update response:', res.data);
-      
       // Update the Redux state with the new user data
       if (res.data && res.data.user) {
         dispatch(updateUserProfile(res.data.user));
-        console.log('Updated Redux state with new user data');
       }
       
       // Reset the profile image state after successful save
@@ -316,25 +310,34 @@ export default function ProfilePage() {
 
   return (
     <>
+      <style jsx>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
       <Navbar />
-      <div className="min-h-[calc(100vh-80px)] bg-gradient-to-br from-gray-50 to-blue-50">
-        <main className="max-w-5xl mx-auto px-4 py-10">
+      <div className="min-h-[calc(100vh-80px)] bg-gray-50">
+        <main className="max-w-6xl mx-auto px-4 py-8">
           {/* Header */}
-          <div className="mb-10">
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">My Account</h1>
-            <p className="text-base text-gray-500 mt-1">Manage your personal information and preferences</p>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">My Account</h1>
+            <p className="text-gray-600 mt-2">Manage your personal information and preferences</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Left Column - Profile Card */}
             <aside className="lg:col-span-1">
-              <div className="bg-white rounded-md border p-8 flex flex-col items-center sticky top-28" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
+              <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col items-center sticky top-24 shadow-sm">
                 <div className="relative mb-4">
-                  <span className="block w-36 h-36 rounded-full bg-gradient-to-tr from-purple-200 to-blue-200 p-1 shadow-lg">
+                  <span className="block w-32 h-32 rounded-full bg-gradient-to-tr from-purple-100 to-blue-100 p-1">
                     <img
                       src={previewUrl || user?.profileImage || '/placeholder.svg'}
                       alt="Profile"
-                      className="w-full h-full rounded-full object-cover border-4 border-white shadow-md"
+                      className="w-full h-full rounded-full object-cover border-2 border-white"
                       onError={(e) => {
                         e.target.src = '/placeholder.svg';
                       }}
@@ -348,12 +351,12 @@ export default function ProfilePage() {
                     onChange={handleProfileImageChange}
                   />
                   <button
-                    className="absolute bottom-2 right-2 bg-white p-2 rounded-full border border-gray-200 shadow hover:bg-gray-50 transition-colors"
+                    className="absolute bottom-1 right-1 bg-white p-2 rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
                     title="Change photo"
                     onClick={handleEditPhotoClick}
                     disabled={uploading}
                   >
-                    <FiEdit2 className="w-5 h-5 text-gray-600" />
+                    <FiEdit2 className="w-4 h-4 text-gray-600" />
                   </button>
                   {selectedFile && (
                     <div className="absolute left-1/2 -bottom-16 transform -translate-x-1/2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-4 flex flex-col items-center z-10">
@@ -378,393 +381,518 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
-                <h2 className="mt-2 text-2xl font-semibold text-gray-900">{user.firstName} {user.lastName}</h2>
+                <h2 className="mt-3 text-xl font-semibold text-gray-900 text-center">{user.firstName} {user.lastName}</h2>
                 <div className="mt-1 flex items-center text-sm text-gray-500">
                   <FiMail className="w-4 h-4 mr-2" />
-                  <span>{user.email}</span>
+                  <span className="truncate">{user.email}</span>
                 </div>
                 {user.role && (
-                  <span className="mt-2 inline-block px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 capitalize">
+                  <span className="mt-3 inline-block px-3 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700 capitalize">
                     {user.role}
                   </span>
                 )}
-                <div className="w-full mt-8 pt-6 border-t border-gray-100 space-y-3">
+                <div className="w-full mt-6 pt-4 border-t border-gray-100 space-y-2">
                   <button
                     onClick={() => router.push("/orders")}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
-                    <FiShoppingBag className="w-5 h-5" />
+                    <FiShoppingBag className="w-4 h-4" />
                     <span>View Orders</span>
                   </button>
                   <button
                     onClick={logoutHandler}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium shadow-sm hover:cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium hover:cursor-pointer"
                   >
-                    <FiLogOut className="w-5 h-5" />
+                    <FiLogOut className="w-4 h-4" />
                     <span>Sign Out</span>
                   </button>
                 </div>
               </div>
             </aside>
 
-            {/* Right Column - Information */}
-            <section className="lg:col-span-2 space-y-10">
-              {/* 1. Personal Information */}
-              <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
-                <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-purple-00 to-blue-100">
-                    <FaUser className="w-5 h-5 text-purple-600" />
-                  </span>
-                  <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Personal Information</h3>
-                </div>
-                <form className="p-8 space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                      <div className="relative">
-                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <FiPhone className="w-4 h-4 text-gray-400" />
-                        </span>
-                        <input
-                          type="text"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="Add phone number"
-                          className="pl-10 w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition text-gray-900 bg-gray-50"
-                        />
+            {/* Right Column - Two Section Layout */}
+            <section className="lg:col-span-3">
+              <div className="max-h-[calc(100vh-12rem)] overflow-y-auto space-y-6 pr-2">
+                {/* Top Section - Personal Info & Settings */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                  {/* Top Tab Navigation */}
+                  <div className="border-b border-gray-200 bg-white">
+                    <nav className="flex px-4 md:px-6" aria-label="Top Tabs">
+                      <div className="flex space-x-6 md:space-x-8">
+                        {[
+                          { id: 'personal', name: 'Personal Info', fullName: 'Personal Information', icon: FaUser },
+                          { id: 'settings', name: 'Settings', fullName: 'Settings', icon: RiLockPasswordFill },
+                        ].map((tab) => {
+                          const Icon = tab.icon;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setActiveTab(tab.id)}
+                              className={`${
+                                activeTab === tab.id
+                                  ? 'border-purple-500 text-purple-600'
+                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors`}
+                            >
+                              <Icon className="w-4 h-4" />
+                              <span className="hidden sm:inline">{tab.fullName}</span>
+                              <span className="sm:hidden">{tab.name}</span>
+                            </button>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                      <div className="relative">
-                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <FiMapPin className="w-4 h-4 text-gray-400" />
-                        </span>
-                        <input
-                          type="text"
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          placeholder="Add address"
-                          className="pl-10 w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition text-gray-900 bg-gray-50"
-                        />
-                      </div>
-                    </div>
+                    </nav>
                   </div>
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => handleSaveChanges()}
-                      disabled={isSaving}
-                      className="px-8 py-3 bg-purple-600 text-white text-base font-semibold rounded-lg shadow hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400 transition-colors disabled:opacity-50"
-                    >
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-{/* 2. Order Summary */}
-<div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-  {/* Header */}
-  <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-green-100 to-blue-100">
-      <FiShoppingBag className="w-5 h-5 text-green-600" />
-    </span>
-    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Order Summary</h3>
-  </div>
 
-  {/* Content */}
-  <div className="p-6">
-    {ordersLoading ? (
-      <div className="text-sm text-gray-500">Loading order summary...</div>
-    ) : (
-      <div className="flex flex-col gap-6">
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {/* Total Orders */}
-          <div className="flex flex-col items-start rounded-xl border border-gray-100 bg-gray-50 p-4 hover:shadow-sm transition">
-            <span className="text-xs text-gray-500">Total Orders</span>
-            <span className="mt-1 text-2xl font-bold text-gray-900">{orders.length}</span>
-          </div>
-
-          {/* Last Order */}
-          <div className="flex flex-col items-start rounded-xl border border-gray-100 bg-gray-50 p-4 hover:shadow-sm transition">
-            <span className="text-xs text-gray-500">Last Order</span>
-            <span className="mt-1 text-lg font-medium text-gray-900">
-              {orders[0]?.orderedAt
-                ? new Date(orders[0].orderedAt).toLocaleDateString()
-                : "N/A"}
-            </span>
-          </div>
-
-          {/* Status Breakdown */}
-          <div className="flex flex-col items-start rounded-xl border border-gray-100 bg-gray-50 p-4 hover:shadow-sm transition">
-            <span className="text-xs text-gray-500">Status Overview</span>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
-              {["Pending", "Processing", "Shipped", "Delivered", "Cancelled"].map((s) => {
-                const count = orders.filter((o) => o.status === s).length;
-                return (
-                  <span
-                    key={s}
-                    className="flex items-center gap-1 text-gray-700"
-                  >
-                    <span className="font-medium">{s}:</span>
-                    <span>{count}</span>
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Action */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => router.push("/user/history")}
-            className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-          >
-            View Order History
-          </button>
-        </div>
-      </div>
-    )}
-  </div>
-</div>
-
-
-              {/* 3. Reminder History */}
-              <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
-                <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-100 to-purple-100">
-                    <FiClock className="w-5 h-5 text-yellow-600" />
-                  </span>
-                  <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Reminder History</h3>
-                </div>
-                <div className="p-8">
-                  {reminderLoading ? (
-                    <div>Loading reminders...</div>
-                  ) : reminders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <div className="bg-purple-50 rounded-full p-4 mb-4">
-                        <FiClock className="w-10 h-10 text-purple-400" />
+                  {/* Top Tab Content */}
+                  <div className="p-6">
+                    {/* Personal Information Tab */}
+                    {activeTab === 'personal' && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                            <FaUser className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
+                            <p className="text-sm text-gray-500">Update your personal details and contact information</p>
+                          </div>
+                        </div>
+                        
+                        <form className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                              <input
+                                type="text"
+                                value={user.firstName || ''}
+                                disabled
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                              <input
+                                type="text"
+                                value={user.lastName || ''}
+                                disabled
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                              <input
+                                type="email"
+                                value={user.email || ''}
+                                disabled
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                              <div className="relative">
+                                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <FiPhone className="w-4 h-4 text-gray-400" />
+                                </span>
+                                <input
+                                  type="text"
+                                  value={phone}
+                                  onChange={(e) => setPhone(e.target.value)}
+                                  placeholder="Add phone number"
+                                  className="pl-10 w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900"
+                                />
+                              </div>
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                              <div className="relative">
+                                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <FiMapPin className="w-4 h-4 text-gray-400" />
+                                </span>
+                                <input
+                                  type="text"
+                                  value={address}
+                                  onChange={(e) => setAddress(e.target.value)}
+                                  placeholder="Add your address"
+                                  className="pl-10 w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-gray-900"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex justify-end pt-4">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveChanges()}
+                              disabled={isSaving}
+                              className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors disabled:opacity-50"
+                            >
+                              {isSaving ? "Saving..." : "Save Changes"}
+                            </button>
+                          </div>
+                        </form>
                       </div>
-                      <div className="text-lg font-semibold text-gray-700 mb-1">No Reminders Yet</div>
-                      <div className="text-gray-400 text-sm mb-4">You haven't set any reminders. Start by adding a new one!</div>
-                      <button
-                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow"
-                        onClick={openAddModal}
-                      >
-                        Set Reminder
-                      </button>
+                    )}
+
+                    {/* Settings Tab */}
+                    {activeTab === 'settings' && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <RiLockPasswordFill className="w-5 h-5 text-gray-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900">Account Settings</h3>
+                            <p className="text-sm text-gray-500">Manage your account security and preferences</p>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                          <h4 className="text-lg font-medium text-gray-900 mb-4">Change Password</h4>
+                          <PasswordChangeForm />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Section - Other Tabs */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                  {/* Bottom Tab Navigation */}
+                  <div className="border-b border-gray-200 bg-white">
+                    <nav className="flex overflow-x-auto scrollbar-hide px-4 md:px-6" aria-label="Bottom Tabs">
+                      <div className="flex space-x-6 md:space-x-8 min-w-max">
+                        {[
+                          { id: 'orders', name: 'Orders', fullName: 'Order Summary', icon: FiShoppingBag },
+                          { id: 'reminders', name: 'Reminders', fullName: 'Reminder History', icon: FiClock },
+                          { id: 'contributions', name: 'Gifts', fullName: 'Gift Contribution', icon: FiGift },
+                          { id: 'surprise', name: 'Surprises', fullName: 'Surprise Orders', icon: FiGift },
+                        ].map((tab) => {
+                          const Icon = tab.icon;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setActiveBottomTab(tab.id)}
+                              className={`${
+                                activeBottomTab === tab.id
+                                  ? 'border-purple-500 text-purple-600'
+                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors`}
+                            >
+                              <Icon className="w-4 h-4" />
+                              <span className="hidden sm:inline">{tab.fullName}</span>
+                              <span className="sm:hidden">{tab.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </nav>
+                  </div>
+
+                  {/* Bottom Tab Content */}
+                  <div className="p-6">
+                  {/* Order Summary Tab */}
+                  {activeBottomTab === 'orders' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                          <FiShoppingBag className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900">Order Summary</h3>
+                          <p className="text-sm text-gray-500">Overview of your recent orders and purchase history</p>
+                        </div>
+                      </div>
+
+                      {ordersLoading ? (
+                        <div className="flex items-center gap-3 text-gray-500 text-sm">
+                          <span className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"/>
+                          Loading order summary...
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="text-2xl font-bold text-gray-900">{orders.length}</div>
+                              <div className="text-sm text-gray-500">Total Orders</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="text-lg font-semibold text-gray-900">
+                                {orders[0]?.orderedAt ? new Date(orders[0].orderedAt).toLocaleDateString() : "N/A"}
+                              </div>
+                              <div className="text-sm text-gray-500">Last Order</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="text-lg font-semibold text-gray-900">
+                                {orders.filter(o => o.status === 'Delivered').length}
+                              </div>
+                              <div className="text-sm text-gray-500">Delivered Orders</div>
+                            </div>
+                          </div>
+
+                          {/* Recent Orders */}
+                          {orders.length > 0 && (
+                            <div>
+                              <h4 className="text-lg font-medium text-gray-900 mb-4">Recent Orders</h4>
+                              <div className="space-y-3">
+                                {orders.slice(0, 3).map((order) => (
+                                  <div key={order._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div>
+                                      <div className="font-medium text-gray-900">Order #{order._id.slice(-6)}</div>
+                                      <div className="text-sm text-gray-500">{new Date(order.orderedAt).toLocaleDateString()}</div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="font-medium text-gray-900">${order.totalAmount}</div>
+                                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                        order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                        order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-blue-100 text-blue-800'
+                                      }`}>
+                                        {order.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex justify-center">
+                            <button
+                              onClick={() => router.push("/user/history")}
+                              className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                            >
+                              View All Orders
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <ul className="space-y-4">
-                      <div className="flex justify-end mb-4">
+                  )}
+
+                  {/* Reminder History Tab */}
+                  {activeBottomTab === 'reminders' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                            <FiClock className="w-5 h-5 text-yellow-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900">Reminder History</h3>
+                            <p className="text-sm text-gray-500">Manage your event reminders and notifications</p>
+                          </div>
+                        </div>
                         <button
-                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                           onClick={openAddModal}
+                          className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
                         >
                           Add Reminder
                         </button>
                       </div>
-                      {reminders.map(reminder => (
-                        <li key={reminder._id} className="flex flex-col md:flex-row md:items-center md:justify-between bg-gray-50 rounded-lg p-4 border border-gray-100">
-                          <div>
-                            <div className="font-semibold text-gray-800">{reminder.event}</div>
-                            <div className="text-gray-600 text-sm">{reminder.remindermsg}</div>
-                            <div className="text-gray-500 text-xs mt-1">{reminder.date ? reminder.date.slice(0,10) : ''} {reminder.time}</div>
-                          </div>
-                          <div className="flex gap-2 mt-2 md:mt-0">
-                            <button
-                              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                              onClick={() => openEditModal(reminder)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-700 transition-colors"
-                              onClick={() => handleDeleteReminder(reminder._id)}
-                              disabled={deleteLoadingId === reminder._id}
-                            >
-                              {deleteLoadingId === reminder._id ? 'Deleting...' : 'Delete'}
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
 
-              {/* 4. Gift Contributions */}
-              <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
-                <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-purple-100 to-pink-100">
-                    <FiGift className="w-5 h-5 text-purple-600" />
-                  </span>
-                  <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Gift Contributions</h3>
-                </div>
-                <div className="p-8">
-                  {contributionsLoading ? (
-                    <div className="text-center text-gray-500">Loading contributions...</div>
-                  ) : contributions.length === 0 ? (
-                    <div className="text-center">
-                      <p className="text-gray-500 mb-4">You have not participated in any collaborative gifts yet.</p>
-                      <a
-                        href="/dashboard/collaborative-purchases"
-                        className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-                      >
-                        Visit
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {contributions.map((c) => {
-                        const product = c.product || {};
-                        const productImage = product.images && product.images.length > 0 ? (product.images[0].url || product.images[0]) : null;
-                        return (
-                          <div key={c._id} className="bg-white rounded-xl p-4 flex flex-col items-center shadow-sm border border-gray-100">
-                            {productImage ? (
-                              <img src={productImage} alt={product.name || c.productName} className="w-24 h-24 object-cover rounded-lg border mb-3" />
-                            ) : (
-                              <div className="w-24 h-24 bg-gray-100 flex items-center justify-center rounded-lg border text-gray-400 mb-3">No Image</div>
-                            )}
-                            <h4 className="text-base font-semibold text-purple-800 mb-1 text-center">{product.name || c.productName}</h4>
-                            <p className="text-gray-700 text-sm mb-1">Price: <span className="font-medium">Rs. {c.productPrice || product.salePrice || product.retailPrice}</span></p>
-                            <p className="text-gray-500 text-xs mb-2">Deadline: {new Date(c.deadline).toLocaleDateString()}</p>
-                            <button
-                              onClick={() => openContributionModal(c)}
-                              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors w-full"
-                            >
-                              View
-                            </button>
+                      {reminderLoading ? (
+                        <div className="flex items-center gap-3 text-gray-500 text-sm">
+                          <span className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"/>
+                          Loading reminders...
+                        </div>
+                      ) : reminders.length === 0 ? (
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <FiClock className="w-8 h-8 text-purple-500" />
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 5. Surprise Gifts */}
-              <div className="rounded-xl border bg-white" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
-                <div className="flex items-center justify-between px-6 py-5 border-b bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-xl">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-purple-100 shadow-sm">
-                      <FiGift className="w-5 h-5 text-purple-600" />
-                    </span>
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 tracking-tight">Surprise Gift Orders</h3>
-                      <p className="text-xs sm:text-sm text-gray-500">Track the status of your surprise deliveries</p>
-                    </div>
-                  </div>
-                  {/* {!surpriseLoading && surpriseGifts.length > 0 && (
-                    <button
-                      onClick={() => window.location.assign('/user/history')}
-                      className="px-3 py-1.5 text-xs sm:text-sm border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      View all
-                    </button>
-                  )} */}
-                </div>
-                <div className="p-6 sm:p-8">
-                  {surpriseLoading ? (
-                    <div className="flex items-center gap-3 text-gray-500 text-sm"><span className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"/> Loading...</div>
-                  ) : surpriseGifts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center py-10 rounded-lg border border-dashed border-gray-200 bg-gray-50">
-                      <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-3">
-                        <FiGift className="w-6 h-6 text-purple-600" />
-                      </div>
-                      <div className="text-gray-700 font-medium mb-1">No surprise gift orders yet</div>
-                      <div className="text-gray-500 text-sm mb-4">Start by choosing a product to surprise someone</div>
-                      <button onClick={() => window.location.assign('/allProducts')} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors">Explore products</button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-5">
-                      {surpriseGifts.slice(0,4).map((g) => (
-                        <div
-                          key={g._id}
-                          className="w-full rounded-xl border border-[#5C5C5C]-300 bg-white p-4 sm:p-5  hover:shadow-md transition-shadow"
-                        >
-                          {/* Header row */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-[11px] uppercase tracking-wide text-gray-500">Recipient</div>
-                              <div className="font-semibold text-gray-900 truncate">{g.recipientName}</div>
-                              <div className="text-xs text-gray-500">{new Date(g.createdAt).toLocaleDateString()}</div>
+                          <h4 className="text-lg font-medium text-gray-900 mb-2">No Reminders Yet</h4>
+                          <p className="text-gray-500 mb-4">You haven't set any reminders. Start by adding a new one!</p>
+                          <button
+                            onClick={openAddModal}
+                            className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            Set Your First Reminder
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {reminders.map(reminder => (
+                            <div key={reminder._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">{reminder.event}</div>
+                                <div className="text-sm text-gray-600 mt-1">{reminder.remindermsg}</div>
+                                <div className="text-xs text-gray-500 mt-2">
+                                  {reminder.date ? reminder.date.slice(0,10) : ''} {reminder.time}
+                                </div>
+                              </div>
+                              <div className="flex gap-2 ml-4">
+                                <button
+                                  onClick={() => openEditModal(reminder)}
+                                  className="px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReminder(reminder._id)}
+                                  disabled={deleteLoadingId === reminder._id}
+                                  className="px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                                >
+                                  {deleteLoadingId === reminder._id ? 'Deleting...' : 'Delete'}
+                                </button>
+                              </div>
                             </div>
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                                g.status === 'Delivered' ? 'bg-green-50 text-green-700 border border-green-200' :
-                                g.status === 'Cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
-                                g.status === 'OutForDelivery' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                                'bg-yellow-50 text-yellow-700 border border-yellow-200'
-                              }`}
-                            >
-                              {g.status}
-                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Gift Contributions Tab */}
+                  {activeBottomTab === 'contributions' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                          <FiGift className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900">Gift Contributions</h3>
+                          <p className="text-sm text-gray-500">Your collaborative gift purchases and contributions</p>
+                        </div>
+                      </div>
+
+                      {contributionsLoading ? (
+                        <div className="flex items-center gap-3 text-gray-500 text-sm">
+                          <span className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"/>
+                          Loading contributions...
+                        </div>
+                      ) : contributions.length === 0 ? (
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <FiGift className="w-8 h-8 text-purple-500" />
                           </div>
-                          {/* Meta */}
-                          <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
-                            {g.costume && g.costume !== 'none' && (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200">
-                                <span className="font-medium">Costume:</span>
-                                <span className="capitalize">{g.costume}</span>
-                              </span>
-                            )}
-                            {g.suggestions && (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 border border-gray-200 truncate max-w-full">
-                                <span className="font-medium">Note:</span>
-                                <span className="truncate">{g.suggestions}</span>
-                              </span>
-                            )}
-                          </div>
-                          {/* Items */}
-                          <div className="mt-4 divide-y divide-gray-100">
-                            {g.items?.map((it, idx) => {
-                              const image = typeof it.image === 'string' ? it.image : (it.product?.images && it.product.images[0] && (it.product.images[0].url || it.product.images[0])) || '/placeholder.svg';
-                              const pid = it.product?._id || it.product;
-                              const name = it.name || it.product?.name || 'Item';
-                              const price = typeof it.price === 'number' ? it.price : (it.product?.salePrice || it.product?.retailPrice || 0);
-                              return (
-                                <div key={idx} className="py-3 flex items-center gap-3">
-                                  <a href={pid ? `/productDetail/${pid}` : '#'} className="w-16 h-16 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0">
-                                    <img src={image || '/placeholder.svg'} alt={name} className="w-full h-full object-cover" />
-                                  </a>
-                                  <div className="flex-1 min-w-0">
-                                    <a href={pid ? `/productDetail/${pid}` : '#'} className="text-sm font-medium text-gray-900 hover:underline truncate block">{name}</a>
-                                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">Qty: {it.quantity || 1}</span>
-                                      <span className="text-gray-300">•</span>
-                                      <span>US ${Number(price).toFixed(2)}</span>
+                          <h4 className="text-lg font-medium text-gray-900 mb-2">No Contributions Yet</h4>
+                          <p className="text-gray-500 mb-4">You haven't participated in any collaborative gifts yet.</p>
+                          <a
+                            href="/dashboard/collaborative-purchases"
+                            className="inline-block px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            Explore Collaborative Gifts
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {contributions.map((c) => {
+                            const product = c.product || {};
+                            const productImage = product.images && product.images.length > 0 ? (product.images[0].url || product.images[0]) : null;
+                            return (
+                              <div key={c._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <div className="flex items-start gap-4">
+                                  {productImage ? (
+                                    <img src={productImage} alt={product.name || c.productName} className="w-16 h-16 object-cover rounded-lg border" />
+                                  ) : (
+                                    <div className="w-16 h-16 bg-gray-200 flex items-center justify-center rounded-lg border text-gray-400">
+                                      <FiGift className="w-6 h-6" />
                                     </div>
+                                  )}
+                                  <div className="flex-1">
+                                    <h4 className="font-medium text-gray-900 mb-1">{product.name || c.productName}</h4>
+                                    <p className="text-sm text-gray-600 mb-2">Rs. {c.productPrice || product.salePrice || product.retailPrice}</p>
+                                    <p className="text-xs text-gray-500">Deadline: {new Date(c.deadline).toLocaleDateString()}</p>
+                                    <button
+                                      onClick={() => openContributionModal(c)}
+                                      className="mt-3 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                                    >
+                                      View Details
+                                    </button>
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                          {/* Footer */}
-                          <div className="mt-4 pt-3 flex items-center justify-between border-t border-gray-100">
-                            <div className="text-sm text-gray-600">Total</div>
-                            <div className="text-base font-semibold text-gray-900">US ${Number(g.total || 0).toFixed(2)}</div>
-                          </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
+                      )}
+                    </div>
+                  )}
+
+                  {/* Surprise Orders Tab */}
+                  {activeBottomTab === 'surprise' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                          <FiGift className="w-5 h-5 text-pink-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900">Surprise Orders</h3>
+                          <p className="text-sm text-gray-500">Track your surprise gift deliveries and recipients</p>
+                        </div>
+                      </div>
+
+                      {surpriseLoading ? (
+                        <div className="flex items-center gap-3 text-gray-500 text-sm">
+                          <span className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"/>
+                          Loading surprise orders...
+                        </div>
+                      ) : surpriseGifts.length === 0 ? (
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <FiGift className="w-8 h-8 text-pink-500" />
+                          </div>
+                          <h4 className="text-lg font-medium text-gray-900 mb-2">No Surprise Orders Yet</h4>
+                          <p className="text-gray-500 mb-4">Start by choosing a product to surprise someone special</p>
+                          <button 
+                            onClick={() => window.location.assign('/allProducts')} 
+                            className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            Explore Products
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {surpriseGifts.map((g) => (
+                            <div key={g._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              {/* Header */}
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <div className="font-medium text-gray-900">{g.recipientName}</div>
+                                  <div className="text-sm text-gray-500">{new Date(g.createdAt).toLocaleDateString()}</div>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  g.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                  g.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                  g.status === 'OutForDelivery' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {g.status}
+                                </span>
+                              </div>
+
+                              {/* Items */}
+                              <div className="space-y-3">
+                                {g.items?.map((it, idx) => {
+                                  const image = typeof it.image === 'string' ? it.image : (it.product?.images && it.product.images[0] && (it.product.images[0].url || it.product.images[0])) || '/placeholder.svg';
+                                  const name = it.name || it.product?.name || 'Item';
+                                  const price = typeof it.price === 'number' ? it.price : (it.product?.salePrice || it.product?.retailPrice || 0);
+                                  return (
+                                    <div key={idx} className="flex items-center gap-3">
+                                      <img src={image} alt={name} className="w-12 h-12 object-cover rounded-lg border" />
+                                      <div className="flex-1">
+                                        <div className="font-medium text-gray-900">{name}</div>
+                                        <div className="text-sm text-gray-500">Qty: {it.quantity || 1} • US ${Number(price).toFixed(2)}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Footer */}
+                              <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+                                <div className="text-sm text-gray-600">Total Amount</div>
+                                <div className="font-semibold text-gray-900">US ${Number(g.total || 0).toFixed(2)}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* 6. Change Password */}
-              <div className="bg-white rounded-md border" style={{ borderColor: 'rgba(217,217,217,0.5)' }}>
-                <div className="flex items-center gap-3 px-8 py-5 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-pink-100 to-yellow-100">
-                    <RiLockPasswordFill  className="w-5 h-5 text-pink-600" />
-                  </span>
-                  <h3 className="text-xl font-semibold text-gray-900 tracking-tight">Change Password</h3>
-                </div>
-                <div className="p-8">
-                  <PasswordChangeForm />
-                </div>
               </div>
             </section>
           </div>
@@ -893,6 +1021,7 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+    <Footer />
     </>
   );
 }
@@ -1011,13 +1140,15 @@ function PasswordChangeForm() {
             }`}
           ></div>
         </div>
-        <div className="text-xs text-gray-500 mt-1">
-          {strength === 0 && "Too weak"}
-          {strength === 1 && "Weak"}
-          {strength === 2 && "Medium"}
-          {strength === 3 && "Strong"}
-          {strength === 4 && "Very strong"}
-        </div>
+        {newPassword && (
+          <div className="mt-1 text-xs text-gray-500">
+            {strength === 0 ? "Enter a password" :
+             strength === 1 ? "Weak password" :
+             strength === 2 ? "Fair password" :
+             strength === 3 ? "Good password" :
+             "Strong password"}
+          </div>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
@@ -1032,7 +1163,7 @@ function PasswordChangeForm() {
           />
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-pink-500"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-500"
             tabIndex={-1}
             onClick={() => setShowConfirm(v => !v)}
             aria-label={showConfirm ? "Hide password" : "Show password"}
@@ -1040,15 +1171,34 @@ function PasswordChangeForm() {
             {showConfirm ? <FiEyeOff /> : <FiEye />}
           </button>
         </div>
+        {confirmPassword && newPassword !== confirmPassword && (
+          <div className="mt-1 text-xs text-red-500">Passwords do not match</div>
+        )}
       </div>
-      {error && <div className="text-red-500 text-sm font-medium text-center">{error}</div>}
-      <div className="flex justify-end">
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="text-sm text-red-700">{error}</div>
+        </div>
+      )}
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+          onClick={() => {
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+            setError("");
+          }}
+        >
+          Cancel
+        </button>
         <button
           type="submit"
-          className="px-8 py-3 bg-[#822BE2] text-white text-base font-semibold rounded-lg shadow hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Updating..." : "Change Password"}
+          {loading ? "Updating..." : "Update Password"}
         </button>
       </div>
     </form>

@@ -93,7 +93,7 @@ export async function GET() {
   try {
     const data = await fs.readFile(filePath, 'utf-8');
     return Response.json(JSON.parse(data));
-  } catch (error) {
+  } catch {
     return Response.json({ error: "Failed to fetch categories" }, { status: 500 });
   }
 }
@@ -114,7 +114,7 @@ export async function POST(request) {
       categories: updatedCategories,
       count: Object.keys(updatedCategories).length,
     });
-  } catch (error) {
+  } catch {
     return Response.json({ error: "Failed to update categories" }, { status: 500 });
   }
 }
@@ -132,7 +132,7 @@ export async function DELETE(request) {
     } else {
       return Response.json({ error: "Category not found" }, { status: 404 })
     }
-  } catch (error) {
+  } catch {
     return Response.json({ error: "Failed to delete category" }, { status: 500 })
   }
 }

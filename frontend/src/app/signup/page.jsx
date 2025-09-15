@@ -162,7 +162,13 @@ export default function Component() {
 
         } catch (otpError) {
           console.error('OTP/Email error:', otpError);
-          toast.error('Failed to send OTP. Please try again.');
+          
+          // Check if it's an email service error
+          if (otpError.response && otpError.response.status === 500) {
+            toast.error('Email service is currently unavailable. Please contact support or try again later.');
+          } else {
+            toast.error('Failed to send OTP. Please try again.');
+          }
           // Don't clear the form data, let user retry
         }
       }

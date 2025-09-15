@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import DashboardSidebar from '../components/sidebar/page';
+import DashboardSidebar from '../components/sidebar/Sidebar';
 import WarningModal from '../components/WarningModal';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';

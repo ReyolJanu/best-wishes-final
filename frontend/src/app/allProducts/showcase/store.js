@@ -1,5 +1,4 @@
 import { createSlice, configureStore } from "@reduxjs/toolkit"
-import { fetchFilteredProductsFromDB } from "./sample-data"
 
 // Initial state
 const initialState = {
@@ -86,9 +85,6 @@ export const {
   setError,
   sortProducts,
 } = productSlice.actions
-
-// Export productSlice itself
-export { productSlice }
 
 // Export store
 export const store = configureStore({
