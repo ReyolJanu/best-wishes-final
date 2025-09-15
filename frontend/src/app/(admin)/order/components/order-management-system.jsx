@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import axios from "axios"
+import { useRouter } from "next/navigation"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -55,6 +56,7 @@ const priorityColors = {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export function OrderManagementSystem() {
+  const router = useRouter()
   const [orders, setOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -112,17 +114,9 @@ export function OrderManagementSystem() {
     }
   };
 
-  const testProductsEndpoint = async () => {
-    try {
-      console.log("Testing products endpoint...");
-      const response = await axios.get(`${API_BASE_URL}/api/products/test`);
-      console.log("Products test response:", response.data);
-      alert(`Products test: ${response.data.message}\nTotal products: ${response.data.totalProducts}`);
-    } catch (error) {
-      console.error("Error testing products endpoint:", error);
-      alert(`Error testing products: ${error.message}`);
-    }
-  };
+  const navigateToCollaborativePurchases = () => {
+    router.push('/order/collaborative-purchases')
+  }
 
   const reduceProductStock = async (orderItems) => {
     try {
@@ -1122,8 +1116,8 @@ export function OrderManagementSystem() {
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <CardTitle className="text-xl">Advanced Order Management System</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={testProductsEndpoint}>
-                  Test Products API
+                <Button variant="outline" size="sm" onClick={navigateToCollaborativePurchases}>
+                  🤝 Pending Collaborative Purchases
                 </Button>
                 {activeTab === "packed" && (
                   <Button variant="outline" size="sm" onClick={printAllPackedOrders}>
