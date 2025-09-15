@@ -293,7 +293,7 @@ export function OrderManagementSystem() {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Customer Details - ${order.referenceCode}</title>
+            <title>Complete Order Details - ${order.referenceCode}</title>
             <style>
               body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
               .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
@@ -308,11 +308,13 @@ export function OrderManagementSystem() {
               .cod-amount { background: #fff3cd; padding: 10px; border: 1px solid #ffeaa7; border-radius: 5px; margin: 10px 0; }
               .instructions { background: #e7f3ff; padding: 10px; border-left: 4px solid #007bff; margin: 10px 0; }
               .total-summary { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }
+              .user-details { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 15px 0; }
+              .product-image { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
             </style>
           </head>
           <body>
             <div class="header">
-              <h1>🎁 Gift Commerce - Customer Details</h1>
+              <h1>🎁 Gift Commerce - Complete Order Details</h1>
               <h2>Order: ${order.referenceCode}</h2>
               <p>Order ID: ${order.orderId}</p>
             </div>
@@ -331,12 +333,26 @@ export function OrderManagementSystem() {
             
             <div class="section">
               <h3>👤 Customer Information</h3>
-              <p><span class="label">Name:</span> ${order.customerName}</p>
-              <p><span class="label">Phone:</span> ${order.customerPhone}</p>
-              <p><span class="label">Email:</span> ${order.customerEmail}</p>
+              <p><span class="label">Display Name:</span> ${order.customerName}</p>
+              <p><span class="label">Display Phone:</span> ${order.customerPhone}</p>
+              <p><span class="label">Display Email:</span> ${order.customerEmail}</p>
               ${order.user?.address ? `<p><span class="label">Address:</span> ${order.user.address}</p>` : ""}
               ${order.customerNotes ? `<p><span class="label">Customer Notes:</span> ${order.customerNotes}</p>` : ""}
             </div>
+            
+            ${order.user && (order.user.firstName || order.user.lastName || order.user.email || order.user.phone) ? `
+            <div class="section">
+              <h3>🗄️ Database User Details</h3>
+              <div class="user-details">
+                ${order.user.firstName ? `<p><span class="label">First Name:</span> ${order.user.firstName}</p>` : ""}
+                ${order.user.lastName ? `<p><span class="label">Last Name:</span> ${order.user.lastName}</p>` : ""}
+                ${order.user.email ? `<p><span class="label">Database Email:</span> ${order.user.email}</p>` : ""}
+                ${order.user.phone ? `<p><span class="label">Database Phone:</span> ${order.user.phone}</p>` : ""}
+                ${order.user.address ? `<p><span class="label">Database Address:</span> ${order.user.address}</p>` : ""}
+                <p><span class="label">User ID:</span> ${order.user.id || 'N/A'}</p>
+              </div>
+            </div>
+            ` : ""}
             
             <div class="section">
               <h3>📍 Delivery Information</h3>
@@ -348,10 +364,11 @@ export function OrderManagementSystem() {
             </div>
             
             <div class="section">
-              <h3>📦 Order Items (${order.items.length} items)</h3>
+              <h3>📦 Product Details (${order.items.length} items)</h3>
               <table class="items">
                 <tr>
-                  <th>Item Name</th>
+                  <th>Image</th>
+                  <th>Product Name</th>
                   <th>SKU</th>
                   <th>Category</th>
                   <th>Quantity</th>
@@ -362,12 +379,13 @@ export function OrderManagementSystem() {
                   .map(
                     (item) => `
                   <tr>
-                    <td>${item.name}</td>
+                    <td>${item.image && item.image !== '/placeholder.svg' ? `<img src="${item.image}" class="product-image" alt="${item.name}" />` : '📦'}</td>
+                    <td><strong>${item.name}</strong></td>
                     <td>${item.sku}</td>
                     <td>${item.category}</td>
                     <td>${item.quantity}</td>
                     <td>£${item.price}</td>
-                    <td>£${(item.price * item.quantity).toFixed(2)}</td>
+                    <td><strong>£${(item.price * item.quantity).toFixed(2)}</strong></td>
                   </tr>
                 `,
                   )
@@ -418,6 +436,7 @@ export function OrderManagementSystem() {
               <p><strong>🏢 Gift Commerce Admin System</strong></p>
               <p><strong>📊 Total Items:</strong> ${order.items.reduce((sum, item) => sum + item.quantity, 0)} pieces</p>
               <p><strong>⚖️ Total Weight:</strong> ${order.items.reduce((sum, item) => sum + Number.parseFloat(item.weight?.replace(' lbs', '') || '0'), 0).toFixed(1)} lbs</p>
+              <p><strong>🔗 Order Type:</strong> ${order.orderSource === 'Collaborative Purchase' ? 'Collaborative Purchase 🤝' : 'Regular Order 🛒'}</p>
             </div>
           </body>
         </html>
@@ -851,6 +870,10 @@ export function OrderManagementSystem() {
 
   const fetchCollaborativePurchases = async () => {
     try {
+      console.log("🔧 API Configuration Check:");
+      console.log("API_BASE_URL:", API_BASE_URL);
+      console.log("Expected format: http://localhost:5000/api");
+      
       console.log("Fetching all collaborative purchases...");
       const response = await axios.get(`${API_BASE_URL}/collaborative-purchases/all`);
       console.log("API Response:", response.data); // Debugging log
@@ -862,13 +885,6 @@ export function OrderManagementSystem() {
 
       // Filter purchases with status "Processing" and "Accepted" for different tabs
       const relevantPurchases = allPurchases.filter(purchase => {
-        // Debug each purchase's status
-        console.log(`Checking purchase ${purchase._id || purchase.id}:`, {
-          status: purchase.status,
-          statusType: typeof purchase.status,
-          statusLength: purchase.status ? purchase.status.length : 0
-        });
-        
         // Include both Processing and Accepted statuses
         return purchase.status === "Processing" || 
                purchase.status === "Accepted" ||
@@ -878,76 +894,336 @@ export function OrderManagementSystem() {
                (purchase.status && purchase.status.trim().toLowerCase() === "accepted");
       });
 
-      // Map collaborative purchases to the same structure as orders
-      const mappedPurchases = relevantPurchases.map((purchase) => ({
-        id: purchase._id,
-        _id: purchase._id,
-        createdAt: purchase.createdAt,
-        orderedAt: purchase.createdAt,
-        orderDate: purchase.createdAt,
-        status: purchase.status.toLowerCase(), // Convert to lowercase for consistency
-        total: purchase.totalAmount || 0,
-        totalAmount: purchase.totalAmount || 0,
-        statusHistory: [],
-        user: {
-          firstName: 'Collaborative',
-          lastName: 'Purchase',
-          phone: 'N/A',
-          email: 'N/A',
-          address: 'N/A'
-        },
-        items: purchase.isMultiProduct 
-          ? (purchase.products || []).map((product, index) => ({
-              id: product._id || `collab-product-${index}`,
-              product: product._id || '',
-              name: product.name || 'Unknown Product',
-              price: product.price || 0,
-              quantity: product.quantity || 1,
-              image: product.image || '/placeholder.svg',
-              sku: `COLLAB-${purchase._id.slice(-6)}-${index + 1}`,
-              category: 'Collaborative',
-              weight: '1.0 lbs',
-              status: 'in_stock'
-            }))
-          : [{
-              id: purchase.product || `collab-item-${purchase._id}`,
-              product: purchase.product || '',
+      console.log(`Found ${relevantPurchases.length} relevant collaborative purchases`);
+      
+      // Test products endpoint connectivity
+      console.log("🧪 Testing products database connectivity...");
+      try {
+        const testResponse = await axios.get(`${API_BASE_URL}/products/test`);
+        console.log("✅ Products endpoint test successful:", testResponse.data);
+      } catch (testError) {
+        console.error("❌ Products endpoint test failed:", testError.response?.data || testError.message);
+      }
+      
+      // Test specific product fetch with a known ID from collaborative purchase
+      if (relevantPurchases.length > 0 && relevantPurchases[0].products && relevantPurchases[0].products[0]) {
+        const testProductId = relevantPurchases[0].products[0].product;
+        console.log(`🧪 Testing specific product fetch with ID: ${testProductId}`);
+        try {
+          const testProductResponse = await axios.get(`${API_BASE_URL}/products/${testProductId}`);
+          console.log("✅ Specific product fetch test successful:", testProductResponse.data);
+        } catch (testProductError) {
+          console.error("❌ Specific product fetch test failed:");
+          console.error("Error status:", testProductError.response?.status);
+          console.error("Error message:", testProductError.message);
+          console.error("Error response:", testProductError.response?.data);
+        }
+      }
+
+      // Map collaborative purchases with fetched user and product details
+      const mappedPurchases = await Promise.all(
+        relevantPurchases.map(async (purchase) => {
+          let userDetails = {
+            firstName: 'Collaborative',
+            lastName: 'Purchase',
+            phone: 'N/A',
+            email: 'N/A',
+            address: 'N/A'
+          };
+
+          // Fetch user details using createdBy field
+          if (purchase.createdBy) {
+            try {
+              console.log(`\n🔍 Fetching user details for createdBy: ${purchase.createdBy}`);
+              console.log(`🌐 User API URL: ${API_BASE_URL}/users/${purchase.createdBy}`);
+              
+              const userResponse = await axios.get(`${API_BASE_URL}/users/${purchase.createdBy}`);
+              console.log("📡 User API Response Status:", userResponse.status);
+              console.log("📡 User API Response Data:", userResponse.data);
+              
+              const user = userResponse.data.user || userResponse.data || {};
+              
+              userDetails = {
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                phone: user.phone || '',
+                email: user.email || '',
+                address: user.address || ''
+              };
+
+              console.log(`\n👤 COMPLETE USER DETAILS for Purchase ${purchase._id}:`);
+              console.log("════════════════════════════════════════");
+              console.log("User ID:", purchase.createdBy);
+              console.log("First Name:", userDetails.firstName);
+              console.log("Last Name:", userDetails.lastName);
+              console.log("Email:", userDetails.email);
+              console.log("Phone:", userDetails.phone);
+              console.log("Address:", userDetails.address);
+              console.log("Full User Object:", user);
+              console.log("════════════════════════════════════════");
+            } catch (userError) {
+              console.error(`❌ Error fetching user details for ${purchase.createdBy}:`);
+              console.error("Error details:", userError.response?.data || userError.message);
+              console.error("Error status:", userError.response?.status);
+            }
+          }
+
+          // Fetch and process product details
+          let processedItems = [];
+          
+          console.log(`\n🔍 Processing products for purchase ${purchase._id}:`);
+          console.log("Is Multi Product:", purchase.isMultiProduct);
+          console.log("Products array:", purchase.products);
+          
+          if (purchase.isMultiProduct && purchase.products) {
+            // Handle multiple products
+            console.log(`Processing ${purchase.products.length} multiple products...`);
+            processedItems = await Promise.all(
+              purchase.products.map(async (product, index) => {
+                console.log(`\n--- Processing Product ${index + 1} ---`);
+                console.log("Product Object:", product);
+                console.log("Product ID to fetch:", product.product);
+                
+                let productDetails = {
+                  name: product.productName || 'Unknown Product',
+                  sku: `FALLBACK-SKU-${product.product?.slice(-6) || index}`,
+                  categories: ['Collaborative'],
+                  price: product.productPrice || 0,
+                  quantity: product.quantity || 1,
+                  image: product.image || '/placeholder.svg',
+                  description: 'No description available',
+                  stock: 0,
+                  brand: 'Unknown Brand'
+                };
+
+                // Fetch detailed product info if product ID exists
+                if (product.product) {
+                  try {
+                    console.log(`🔍 Fetching product details for product ID: ${product.product}`);
+                    console.log(`🌐 Product API URL: ${API_BASE_URL}/products/${product.product}`);
+                    
+                    const productResponse = await axios.get(`${API_BASE_URL}/products/${product.product}`);
+                    console.log("📡 Product API Response Status:", productResponse.status);
+                    console.log("📡 Product API Response Data:", productResponse.data);
+                    
+                    const productData = productResponse.data.product || productResponse.data || {};
+                    
+                    // Prioritize actual product database data over collaborative purchase stored data
+                    productDetails = {
+                      name: productData.name || product.productName || 'Unknown Product',
+                      sku: productData.sku || `FALLBACK-SKU-${product.product?.slice(-6) || index}`,
+                      categories: productData.categories || productData.category || ['Collaborative'],
+                      price: productData.price || product.productPrice || 0, // Prioritize DB price
+                      quantity: product.quantity || 1, // Keep purchase quantity
+                      image: productData.image || product.image || '/placeholder.svg',
+                      description: productData.description || 'No description available',
+                      stock: productData.stock || productData.quantity || 0,
+                      brand: productData.brand || 'Unknown Brand'
+                    };
+
+                    console.log(`\n🛍️ COMPLETE PRODUCT DATABASE DETAILS for Purchase ${purchase._id}, Product ${index + 1}:`);
+                    console.log("════════════════════════════════════════");
+                    console.log("✅ FETCHED FROM PRODUCTS DATABASE:");
+                    console.log("Product ID:", product.product);
+                    console.log("DB Product Name:", productData.name || "NOT FOUND IN DB");
+                    console.log("DB SKU:", productData.sku || "NOT FOUND IN DB");
+                    console.log("DB Categories:", productData.categories || productData.category || "NOT FOUND IN DB");
+                    console.log("DB Price:", productData.price || "NOT FOUND IN DB");
+                    console.log("DB Stock:", productData.stock || productData.quantity || "NOT FOUND IN DB");
+                    console.log("DB Description:", productData.description || "NOT FOUND IN DB");
+                    console.log("DB Brand:", productData.brand || "NOT FOUND IN DB");
+                    console.log("DB Image:", productData.image || "NOT FOUND IN DB");
+                    console.log("\n📦 STORED IN COLLABORATIVE PURCHASE:");
+                    console.log("Stored Name:", product.productName);
+                    console.log("Stored Price:", product.productPrice);
+                    console.log("Stored Quantity:", product.quantity);
+                    console.log("Stored Image:", product.image);
+                    console.log("\n🔄 FINAL MERGED DATA:");
+                    console.log("Final Name:", productDetails.name);
+                    console.log("Final SKU:", productDetails.sku);
+                    console.log("Final Categories:", productDetails.categories);
+                    console.log("Final Price:", productDetails.price);
+                    console.log("Final Quantity:", productDetails.quantity);
+                    console.log("Final Image:", productDetails.image);
+                    console.log("════════════════════════════════════════");
+                  } catch (productError) {
+                    console.error(`❌ PRODUCT DATABASE ACCESS FAILED for ${product.product}:`);
+                    console.error("=== DETAILED ERROR ANALYSIS ===");
+                    console.error("Error message:", productError.message);
+                    console.error("Error status:", productError.response?.status);
+                    console.error("Error status text:", productError.response?.statusText);
+                    console.error("Error response data:", productError.response?.data);
+                    console.error("API URL that failed:", `${API_BASE_URL}/products/${product.product}`);
+                    console.error("Full error object:", productError);
+                    console.error("================================");
+                    
+                    // Use fallback data from collaborative purchase if DB fetch fails
+                    productDetails = {
+                      name: product.productName || 'Unknown Product',
+                      sku: `FALLBACK-SKU-${product.product?.slice(-6) || index}`,
+                      categories: ['Collaborative'],
+                      price: product.productPrice || 0,
+                      quantity: product.quantity || 1,
+                      image: product.image || '/placeholder.svg',
+                      description: 'Product details could not be fetched from database',
+                      stock: 0,
+                      brand: 'Unknown Brand'
+                    };
+                    
+                    console.log("⚠️ USING FALLBACK DATA FROM COLLABORATIVE PURCHASE STORAGE");
+                    console.log("Fallback product details:", productDetails);
+                  }
+                }
+
+                return {
+                  id: product._id || `collab-product-${index}`,
+                  product: product.product || '',
+                  name: productDetails.name,
+                  price: productDetails.price,
+                  quantity: productDetails.quantity,
+                  image: productDetails.image,
+                  sku: productDetails.sku,
+                  category: productDetails.categories,
+                  weight: '1.0 lbs',
+                  status: 'in_stock'
+                };
+              })
+            );
+          } else {
+            // Handle single product
+            let productDetails = {
               name: purchase.productName || 'Unknown Product',
+              sku: `COLLAB-${purchase._id.slice(-6)}`,
+              categories: 'Collaborative',
               price: purchase.productPrice || 0,
               quantity: purchase.quantity || 1,
-              image: '/placeholder.svg',
-              sku: `COLLAB-${purchase._id.slice(-6)}`,
-              category: 'Collaborative',
+              image: '/placeholder.svg'
+            };
+
+            // Fetch detailed product info if product ID exists
+            if (purchase.product) {
+              try {
+                console.log(`Fetching single product details for product ID: ${purchase.product}`);
+                const productResponse = await axios.get(`${API_BASE_URL}/products/${purchase.product}`);
+                const productData = productResponse.data.product || {};
+                
+                productDetails = {
+                  name: productData.name || purchase.productName || 'Unknown Product',
+                  sku: productData.sku || `COLLAB-${purchase._id.slice(-6)}`,
+                  categories: productData.categories || productData.category || 'Collaborative',
+                  price: purchase.productPrice || productData.price || 0,
+                  quantity: purchase.quantity || 1,
+                  image: productData.image || '/placeholder.svg'
+                };
+
+                console.log(`Single Product Details for Purchase ${purchase._id}:`, {
+                  name: productDetails.name,
+                  sku: productDetails.sku,
+                  categories: productDetails.categories,
+                  price: productDetails.price,
+                  quantity: productDetails.quantity,
+                  image: productDetails.image
+                });
+              } catch (productError) {
+                console.error(`Error fetching single product details for ${purchase.product}:`, productError);
+              }
+            }
+
+            processedItems = [{
+              id: purchase.product || `collab-item-${purchase._id}`,
+              product: purchase.product || '',
+              name: productDetails.name,
+              price: productDetails.price,
+              quantity: productDetails.quantity,
+              image: productDetails.image,
+              sku: productDetails.sku,
+              category: productDetails.categories,
               weight: '1.0 lbs',
               status: 'in_stock'
-            }],
-        deliveryNotes: '',
-        trackingNumber: '',
-        referenceCode: `COLLAB-${purchase._id.slice(-6)}`,
-        orderId: purchase._id,
-        priority: 'normal',
-        orderSource: 'Collaborative Purchase',
-        customerName: 'Collaborative Purchase',
-        customerPhone: 'N/A',
-        customerEmail: 'N/A',
-        customerNotes: '',
-        packingStatus: 'not_packed',
-        assignedStaff: '',
-        codAmount: 0,
-        paymentMethod: 'collaborative_payment',
-        isGift: false,
-        giftWrap: false,
-        giftMessage: '',
-        address: 'N/A',
-        billingAddress: 'N/A',
-        estimatedTime: '2-3 days',
-        shippingMethod: 'standard',
-        specialInstructions: '',
-        internalNotes: ''
-      }));
+            }];
+          }
 
-      console.log("Mapped Collaborative Purchases:", mappedPurchases);
+          // Log combined data for this purchase
+          console.log(`\n🎯 ===== COMPLETE COLLABORATIVE PURCHASE ANALYSIS =====`);
+          console.log(`Purchase ID: ${purchase._id}`);
+          console.log(`Status: ${purchase.status}`);
+          console.log(`Total Amount: £${purchase.totalAmount}`);
+          console.log(`Share Amount: £${purchase.shareAmount}`);
+          console.log(`Is Multi Product: ${purchase.isMultiProduct}`);
+          console.log(`Created At: ${new Date(purchase.createdAt).toLocaleString()}`);
+          console.log(`Deadline: ${new Date(purchase.deadline).toLocaleString()}`);
+          
+          console.log("\n👤 USER SUMMARY:");
+          console.log("User ID:", purchase.createdBy);
+          console.log("Full Name:", `${userDetails.firstName} ${userDetails.lastName}`.trim());
+          console.log("Email:", userDetails.email);
+          console.log("Phone:", userDetails.phone);
+          console.log("Address:", userDetails.address);
+          
+          console.log("\n🛍️ PRODUCTS SUMMARY:");
+          processedItems.forEach((item, idx) => {
+            console.log(`Product ${idx + 1}:`);
+            console.log(`  - Name: ${item.name}`);
+            console.log(`  - SKU: ${item.sku}`);
+            console.log(`  - Category: ${item.category}`);
+            console.log(`  - Price: £${item.price}`);
+            console.log(`  - Quantity: ${item.quantity}`);
+            console.log(`  - Image: ${item.image}`);
+          });
+          
+          console.log("\n👥 PARTICIPANTS SUMMARY:");
+          purchase.participants?.forEach((participant, idx) => {
+            console.log(`Participant ${idx + 1}:`);
+            console.log(`  - Email: ${participant.email}`);
+            console.log(`  - Payment Status: ${participant.paymentStatus}`);
+            console.log(`  - Payment Link: ${participant.paymentLink}`);
+          });
+          
+          console.log("🎯 ===================================================\n");
+
+          return {
+            id: purchase._id,
+            _id: purchase._id,
+            createdAt: purchase.createdAt,
+            orderedAt: purchase.createdAt,
+            orderDate: purchase.createdAt,
+            status: purchase.status.toLowerCase(),
+            total: purchase.totalAmount || 0,
+            totalAmount: purchase.totalAmount || 0,
+            statusHistory: [],
+            user: userDetails,
+            items: processedItems,
+            deliveryNotes: '',
+            trackingNumber: '',
+            referenceCode: `COLLAB-${purchase._id.slice(-6)}`,
+            orderId: purchase._id,
+            priority: 'normal',
+            orderSource: 'Collaborative Purchase',
+            customerName: `${userDetails.firstName} ${userDetails.lastName}`.trim() || 'Collaborative Purchase',
+            customerPhone: userDetails.phone || 'N/A',
+            customerEmail: userDetails.email || 'N/A',
+            customerNotes: '',
+            packingStatus: 'not_packed',
+            assignedStaff: '',
+            codAmount: 0,
+            paymentMethod: 'collaborative_payment',
+            isGift: false,
+            giftWrap: false,
+            giftMessage: '',
+            address: userDetails.address || 'N/A',
+            billingAddress: userDetails.address || 'N/A',
+            estimatedTime: '2-3 days',
+            shippingMethod: 'standard',
+            specialInstructions: '',
+            internalNotes: ''
+          };
+        })
+      );
+
+      console.log("=== FINAL SUMMARY ===");
       console.log("Number of relevant purchases found:", mappedPurchases.length);
+      console.log("Mapped Collaborative Purchases with complete data:", mappedPurchases);
+      console.log("=====================");
       
       return mappedPurchases;
     } catch (error) {
@@ -1232,6 +1508,21 @@ export function OrderManagementSystem() {
                                     <strong>Address:</strong> {order.user.address}
                                   </div>
                                 )}
+                                {order.user?.firstName && (
+                                  <div className="text-xs text-blue-600">
+                                    <strong>👤 User:</strong> {order.user.firstName} {order.user.lastName}
+                                  </div>
+                                )}
+                                {order.user?.email && order.user.email !== order.customerEmail && (
+                                  <div className="text-xs text-green-600">
+                                    <strong>📧 DB Email:</strong> {order.user.email}
+                                  </div>
+                                )}
+                                {order.user?.phone && order.user.phone !== order.customerPhone && (
+                                  <div className="text-xs text-purple-600">
+                                    <strong>📱 DB Phone:</strong> {order.user.phone}
+                                  </div>
+                                )}
                                 {order.customerNotes && (
                                   <div className="text-xs text-blue-600 bg-blue-50 p-1 rounded">
                                     💡 {order.customerNotes}
@@ -1249,14 +1540,46 @@ export function OrderManagementSystem() {
                                 <div className="text-sm text-muted-foreground">
                                   {order.items.reduce((sum, item) => sum + item.quantity, 0)} total items
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleOrderExpansion(order.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-700 p-0 h-auto"
-                                >
-                                  {expandedOrders.includes(order.id) ? "Hide Products" : "View Products"}
-                                </Button>
+                                
+                                {/* Show products based on expanded state */}
+                                {expandedOrders.includes(order.id) ? (
+                                  // Show all products when expanded
+                                  <>
+                                    {order.items.map((item, index) => (
+                                      <div key={index} className="text-xs bg-gray-50 p-2 rounded mb-1">
+                                        <div className="font-medium text-blue-600">{item.name}</div>
+                                        <div className="text-muted-foreground">SKU: {item.sku}</div>
+                                        <div className="text-muted-foreground">Category: {item.category}</div>
+                                        <div className="text-green-600">£{item.price} × {item.quantity}</div>
+                                        {item.image && item.image !== '/placeholder.svg' && (
+                                          <div className="mt-1">
+                                            <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded" />
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </>
+                                ) : (
+                                    // Collapsed: Only show total items and button
+                                    <>
+                                      {/* Only show total items */}
+                                    </>
+                                )}
+                                
+                                {/* Show toggle button only if there are products to show/hide */}
+                                {order.items.length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleOrderExpansion(order.id)}
+                                    className="text-xs text-blue-600 hover:text-blue-700 p-0 h-auto"
+                                  >
+                                    {expandedOrders.includes(order.id) ? "Hide Products" : 
+                                     (order.items.length === 1 ? "View Product Details" : 
+                                      order.items.length === 2 ? "View All Products" : 
+                                      `View All ${order.items.length} Products`)}
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
 

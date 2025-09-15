@@ -1,8 +1,11 @@
 const express = require('express');
 const { isAuthenticated, authorizeRoles } = require('../middleware/authMiddleware');
-const { listUsersWithStats, bulkActivateUsers, bulkDeactivateUsers, bulkDeleteUsers } = require('../controllers/userController');
+const { listUsersWithStats, bulkActivateUsers, bulkDeactivateUsers, bulkDeleteUsers, getUserById } = require('../controllers/userController');
 
 const router = express.Router();
+
+// Get single user by ID (for collaborative purchases)
+router.get('/users/:id', getUserById);
 
 // Admin: list users with stats
 router.get('/admin/users', isAuthenticated, authorizeRoles('admin'), listUsersWithStats);

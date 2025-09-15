@@ -104,4 +104,40 @@ exports.bulkDeleteUsers = async (req, res) => {
   }
 };
 
+// GET /api/users/:id
+// Get a single user by ID for collaborative purchases
+exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate if ID is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    const user = await User.findById(id, 'firstName lastName email phone address createdAt profileImage').lean();
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ 
+      success: true,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone || '',
+        address: user.address || '',
+        createdAt: user.createdAt,
+        profileImage: user.profileImage || ''
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching user by ID:', err);
+    return res.status(500).json({ message: 'Failed to fetch user', error: err.message });
+  }
+};
+
 
