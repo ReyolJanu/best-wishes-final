@@ -24,7 +24,9 @@ const orderSchema = new mongoose.Schema({
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   statusHistory: [statusHistorySchema],
   deliveryNotes: { type: String, default: '' },
-  trackingNumber: { type: String, default: '' }
+  trackingNumber: { type: String, default: '' },
+  deliveryStaffId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deliveredAt: { type: Date }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

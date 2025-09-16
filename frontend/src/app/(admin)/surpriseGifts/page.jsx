@@ -338,122 +338,122 @@ export default function SurpriseGiftManagement() {
     }
   }
 
-  const reduceProductQuantity = async (giftId) => {
-    try {
-      // Find the gift to get its items
-      const gift = surpriseGifts.find(g => g._id === giftId)
-      if (!gift || !gift.items) {
-        console.error('Gift not found or has no items')
-        return false
-      }
+  // const reduceProductQuantity = async (giftId) => {
+  //   try {
+  //     // Find the gift to get its items
+  //     const gift = surpriseGifts.find(g => g._id === giftId)
+  //     if (!gift || !gift.items) {
+  //       console.error('Gift not found or has no items')
+  //       return false
+  //     }
 
-      // Extract product IDs and quantities
-      const productUpdates = gift.items.map(item => ({
-        productId: item.product._id || item.product,
-        quantity: item.quantity
-      }))
+  //     // Extract product IDs and quantities
+  //     const productUpdates = gift.items.map(item => ({
+  //       productId: item.product._id || item.product,
+  //       quantity: item.quantity
+  //     }))
 
-      console.log('Reducing stock for products:', productUpdates)
+  //     console.log('Reducing stock for products:', productUpdates)
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/reduce-stock`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          items: productUpdates
-        }),
-      })
+  //     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/reduce-stock`, {
+  //       method: 'PUT',
+  //       credentials: 'include',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ 
+  //         items: productUpdates
+  //       }),
+  //     })
       
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          console.log('Stock reduced successfully:', data.message)
-          return true
-        } else {
-          console.error('Failed to reduce stock:', data.message)
-          alert('Failed to reduce product stock: ' + data.message)
-          return false
-        }
-      } else {
-        console.error('Failed to reduce stock, status:', response.status)
-        alert('Failed to reduce product stock')
-        return false
-      }
-    } catch (error) {
-      console.error('Error reducing product stock:', error)
-      alert('Error reducing product stock')
-      return false
-    }
-  }
+  //     if (response.ok) {
+  //       const data = await response.json()
+  //       if (data.success) {
+  //         console.log('Stock reduced successfully:', data.message)
+  //         return true
+  //       } else {
+  //         console.error('Failed to reduce stock:', data.message)
+  //         alert('Failed to reduce product stock: ' + data.message)
+  //         return false
+  //       }
+  //     } else {
+  //       console.error('Failed to reduce stock, status:', response.status)
+  //       alert('Failed to reduce product stock')
+  //       return false
+  //     }
+  //   } catch (error) {
+  //     console.error('Error reducing product stock:', error)
+  //     alert('Error reducing product stock')
+  //     return false
+  //   }
+  // }
 
-  const createOrderSummary = async (giftId) => {
-    try {
-      // Find the gift to get its items
-      const gift = surpriseGifts.find(g => g._id === giftId)
-      if (!gift || !gift.items) {
-        console.error('Gift not found or has no items')
-        return false
-      }
+  // const createOrderSummary = async (giftId) => {
+  //   try {
+  //     // Find the gift to get its items
+  //     const gift = surpriseGifts.find(g => g._id === giftId)
+  //     if (!gift || !gift.items) {
+  //       console.error('Gift not found or has no items')
+  //       return false
+  //     }
 
-      // Create order summary records for each item
-      const orderSummaryRecords = gift.items.map(item => {
-        const product = item.product
-        const salePrice = product.salePrice || product.retailPrice || product.price || 0
-        const costPrice = product.costPrice || 0
-        const retailPrice = product.retailPrice || product.price || 0
-        const profit = salePrice - costPrice
+  //     // Create order summary records for each item
+  //     const orderSummaryRecords = gift.items.map(item => {
+  //       const product = item.product
+  //       const salePrice = product.salePrice || product.retailPrice || product.price || 0
+  //       const costPrice = product.costPrice || 0
+  //       const retailPrice = product.retailPrice || product.price || 0
+  //       const profit = salePrice - costPrice
 
-        return {
-          giftId: giftId,
-          productSKU: product.sku || product._id,
-          productId: product._id,
-          productName: product.name,
-          quantity: item.quantity,
-          costPrice: costPrice,
-          retailPrice: retailPrice,
-          salePrice: salePrice,
-          profit: profit,
-          totalProfit: profit * item.quantity,
-          orderDate: new Date().toISOString()
-        }
-      })
+  //       return {
+  //         giftId: giftId,
+  //         productSKU: product.sku || product._id,
+  //         productId: product._id,
+  //         productName: product.name,
+  //         quantity: item.quantity,
+  //         costPrice: costPrice,
+  //         retailPrice: retailPrice,
+  //         salePrice: salePrice,
+  //         profit: profit,
+  //         totalProfit: profit * item.quantity,
+  //         orderDate: new Date().toISOString()
+  //       }
+  //     })
 
-      console.log('Creating order summary records:', orderSummaryRecords)
+  //     console.log('Creating order summary records:', orderSummaryRecords)
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/order-summary/create`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          records: orderSummaryRecords
-        }),
-      })
+  //     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/order-summary/create`, {
+  //       method: 'POST',
+  //       credentials: 'include',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ 
+  //         records: orderSummaryRecords
+  //       }),
+  //     })
       
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          console.log('Order summary created successfully:', data.message)
-          return true
-        } else {
-          console.error('Failed to create order summary:', data.message)
-          alert('Failed to create order summary: ' + data.message)
-          return false
-        }
-      } else {
-        console.error('Failed to create order summary, status:', response.status)
-        alert('Failed to create order summary')
-        return false
-      }
-    } catch (error) {
-      console.error('Error creating order summary:', error)
-      alert('Error creating order summary')
-      return false
-    }
-  }
+  //     if (response.ok) {
+  //       const data = await response.json()
+  //       if (data.success) {
+  //         console.log('Order summary created successfully:', data.message)
+  //         return true
+  //       } else {
+  //         console.error('Failed to create order summary:', data.message)
+  //         alert('Failed to create order summary: ' + data.message)
+  //         return false
+  //       }
+  //     } else {
+  //       console.error('Failed to create order summary, status:', response.status)
+  //       alert('Failed to create order summary')
+  //       return false
+  //     }
+  //   } catch (error) {
+  //     console.error('Error creating order summary:', error)
+  //     alert('Error creating order summary')
+  //     return false
+  //   }
+  // }
 
   const getStatusBadge = (status) => {
     const statusConfig = {

@@ -10,16 +10,39 @@ import Image from "next/image";
 import logo from "@/assets/logo.png";
 
 
-export default function NavigationBar({ activeTab, onTabChange, isDarkMode, onToggleTheme }) {
+export default function NavigationBar({ activeTab, onTabChange, userProfile, notifications = [] }) {
   // State management
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showProfilePage, setShowProfilePage] = useState(false)
   const [userData, setUserData] = useState({
-    name: "John Doe",
-    email: "john.doe@delivery.com",
+    name: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Loading...",
+    email: userProfile?.email || "Loading...",
+    phone: userProfile?.phone || "Loading...",
+    profileImage: userProfile?.profileImage || "/images/profile-avatar.png",
   })
-  const [notifications, setNotifications] = useState([
+  
+  // Update userData when userProfile changes
+  useEffect(() => {
+    if (userProfile) {
+      setUserData({
+        name: `${userProfile.firstName} ${userProfile.lastName}`,
+        email: userProfile.email,
+        phone: userProfile.phone || "Not provided",
+        profileImage: userProfile.profileImage || "/images/profile-avatar.png",
+      })
+    }
+  }, [userProfile])
+  
+  const [userNotifications, setUserNotifications] = useState(notifications || [])
+  
+  // Update notifications when prop changes
+  useEffect(() => {
+    setUserNotifications(notifications || [])
+  }, [notifications])
+  
+  // Mock notifications - remove this when real notifications are implemented
+  const [mockNotifications] = useState([
     {
       id: "1",
       message: "Order #12345 assigned to you",
@@ -78,7 +101,7 @@ export default function NavigationBar({ activeTab, onTabChange, isDarkMode, onTo
 
   // Handle notification click
   const handleNotificationClick = (notificationId) => {
-    setNotifications((prev) =>
+    setUserNotifications((prev) =>
       prev.map((notification) => (notification.id === notificationId ? { ...notification, read: true } : notification)),
     )
     // Navigate to notification details or handle specific notification actions
@@ -110,7 +133,7 @@ export default function NavigationBar({ activeTab, onTabChange, isDarkMode, onTo
   }
 
   // Get unread notification count
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const unreadCount = userNotifications.filter((n) => !n.read).length
 
   // Navigation items
   const navItems = [
@@ -159,18 +182,8 @@ export default function NavigationBar({ activeTab, onTabChange, isDarkMode, onTo
               <Image src={logo} alt="Logo" width={100} className="h-auto sm:w-[130px]" />
             </div>
 
-            {/* Right: Theme Toggle, Notification and Profile */}
+            {/* Right: Notification and Profile */}
             <div className="flex items-center space-x-2 w-full sm:w-auto">
-              {/* Theme Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggleTheme}
-                className="hover:bg-purple-50"
-              >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </Button>
-
               {/* Notification Dropdown */}
               <div className="relative flex-1 sm:flex-none" ref={notificationRef}>
                 <Button
@@ -200,7 +213,7 @@ export default function NavigationBar({ activeTab, onTabChange, isDarkMode, onTo
                       {notifications.length === 0 ? (
                         <div className="p-4 text-center text-gray-500">No notifications</div>
                       ) : (
-                        notifications.map((notification) => (
+                        userNotifications.map((notification) => (
                           <div
                             key={notification.id}
                             onClick={() => handleNotificationClick(notification.id)}
@@ -337,7 +350,12 @@ export default function NavigationBar({ activeTab, onTabChange, isDarkMode, onTo
       </nav>
 
       {/* Profile Page Modal */}
-      {showProfilePage && <ProfilePage onClose={() => setShowProfilePage(false)} />}
+      {showProfilePage && (
+        <ProfilePage 
+          onClose={() => setShowProfilePage(false)} 
+          userProfile={userProfile}
+        />
+      )}
     </>
   )
 }

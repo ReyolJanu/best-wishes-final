@@ -19,6 +19,8 @@ const surpriseGiftSchema = new mongoose.Schema({
   total: { type: Number, required: true },
   status: { type: String, enum: ['Pending','Scheduled','OutForDelivery','Delivered','Cancelled'], default: 'Pending' },
   scheduledAt: { type: Date },
+  deliveryStaffId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deliveredAt: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('SurpriseGift', surpriseGiftSchema);

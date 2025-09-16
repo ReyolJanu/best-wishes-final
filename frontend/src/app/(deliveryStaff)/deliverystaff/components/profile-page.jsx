@@ -7,19 +7,40 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Camera, Save, X, Upload, User, Mail, Phone, MapPin } from "lucide-react"
 import Image from "next/image"
 
-export default function ProfilePage({ onClose }) {
-  const [userProfile, setUserProfile] = useState({
-    name: "John Doe",
-    email: "john.doe@delivery.com",
-    phone: "+44 7123 456789",
-    address: "123 Main Street, London, UK",
-    profileImage: "/images/profile-avatar.png",
+export default function ProfilePage({ onClose, userProfile }) {
+  const [localProfile, setLocalProfile] = useState({
+    firstName: userProfile?.firstName || "John",
+    lastName: userProfile?.lastName || "Doe",
+    name: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "John Doe",
+    email: userProfile?.email || "john.doe@delivery.com",
+    id: userProfile?._id || "12345",
+    phone: userProfile?.phone || "+44 7123 456789",
+    address: userProfile?.address || "123 Main Street, London, UK",
+    profileImage: userProfile?.profileImage || "/images/profile-avatar.png",
   })
 
   const [isEditing, setIsEditing] = useState(false)
-  const [tempProfile, setTempProfile] = useState(userProfile)
+  const [tempProfile, setTempProfile] = useState(localProfile)
   const [imagePreview, setImagePreview] = useState(null)
   const fileInputRef = useRef(null)
+
+  // Update local profile when userProfile prop changes
+  useEffect(() => {
+    if (userProfile) {
+      const updatedProfile = {
+        firstName: userProfile.firstName || "John",
+        lastName: userProfile.lastName || "Doe",
+        name: `${userProfile.firstName || "John"} ${userProfile.lastName || "Doe"}`,
+        email: userProfile.email || "john.doe@delivery.com",
+        id: userProfile._id || "12345",
+        phone: userProfile.phone || "+44 7123 456789",
+        address: userProfile.address || "123 Main Street, London, UK",
+        profileImage: userProfile.profileImage || "/images/profile-avatar.png",
+      }
+      setLocalProfile(updatedProfile)
+      setTempProfile(updatedProfile)
+    }
+  }, [userProfile])
 
   const handleImageUpload = (event) => {
     const file = event.target.files?.[0]
@@ -35,14 +56,14 @@ export default function ProfilePage({ onClose }) {
   }
 
   const handleSave = () => {
-    setUserProfile(tempProfile)
+    setLocalProfile(tempProfile)
     setIsEditing(false)
     setImagePreview(null)
     alert("Profile updated successfully!")
   }
 
   const handleCancel = () => {
-    setTempProfile(userProfile)
+    setTempProfile(localProfile)
     setIsEditing(false)
     setImagePreview(null)
   }

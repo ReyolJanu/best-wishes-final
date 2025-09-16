@@ -99,7 +99,7 @@ exports.getSurpriseGiftById = async (req, res) => {
 
 exports.updateSurpriseGiftStatus = async (req, res) => {
   try {
-    const { status, scheduledAt } = req.body;
+    const { status, scheduledAt, deliveryStaffId } = req.body;
     const { id } = req.params;
     
     const validStatuses = ['Pending','Scheduled','OutForDelivery','Delivered','Cancelled'];
@@ -113,6 +113,12 @@ exports.updateSurpriseGiftStatus = async (req, res) => {
     const updateData = { status };
     if (scheduledAt) {
       updateData.scheduledAt = new Date(scheduledAt);
+    }
+    
+    // Add delivery staff ID when marking as delivered
+    if (status === 'Delivered' && deliveryStaffId) {
+      updateData.deliveryStaffId = deliveryStaffId;
+      updateData.deliveredAt = new Date();
     }
 
     const doc = await SurpriseGift.findByIdAndUpdate(

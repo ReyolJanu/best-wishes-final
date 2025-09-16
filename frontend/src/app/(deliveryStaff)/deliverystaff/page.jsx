@@ -27,6 +27,8 @@ export default function DeliveryDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
   const [orderType, setOrderType] = useState("orders") // "orders" or "surpriseGifts"
+  const [userProfile, setUserProfile] = useState(null)
+  const [notifications, setNotifications] = useState([])
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
@@ -38,7 +40,7 @@ export default function DeliveryDashboard() {
   })
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
-  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false)
+  const [updatingOrderId, setUpdatingOrderId] = useState(null) // Track which specific order is being updated
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
@@ -151,6 +153,51 @@ export default function DeliveryDashboard() {
   // API functions
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
+  // Fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      const response = await authenticatedFetch('/delivery/profile')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setUserProfile(data.user)
+          return data.user // Return the user data
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error)
+    }
+    return null
+  }
+
+  // Fetch notifications for the logged-in staff
+  const fetchNotifications = async () => {
+    try {
+      // Mock notifications for now - implement real API when ready
+      const mockNotifications = [
+        {
+          id: "1",
+          message: "New order assigned to you",
+          orderId: "ORD001",
+          time: "2 minutes ago",
+          type: "order",
+          read: false,
+        },
+        {
+          id: "2", 
+          message: "Surprise gift delivery ready",
+          orderId: "SG001",
+          time: "15 minutes ago",
+          type: "surprise-gift",
+          read: false,
+        }
+      ]
+      setNotifications(mockNotifications)
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+    }
+  }
+
   const fetchOrders = async (page = 1, status = filterStatus, search = searchQuery) => {
     setLoading(true)
     try {
@@ -256,28 +303,86 @@ export default function DeliveryDashboard() {
     }
   }
 
-  const fetchDeliveryHistory = async () => {
+  const fetchDeliveryHistory = async (providedStaffId = null) => {
     setLoading(true)
     try {
-      // For now, use mock data - implement when history system is ready
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      setDeliveryHistory(mockDeliveryHistory)
+      // Use provided staffId or get from userProfile
+      const staffId = providedStaffId || userProfile?._id
+      
+      if (!staffId) {
+        console.warn("User profile not loaded, cannot fetch delivery history")
+        setDeliveryHistory([])
+        return
+      }
+
+      const [ordersResponse, surpriseGiftsResponse] = await Promise.all([
+        authenticatedFetch(`/delivery/orders?status=delivered&deliveryStaff=${staffId}`),
+        authenticatedFetch(`/delivery/surprise-gifts?status=delivered&deliveryStaff=${staffId}`)
+      ])
+
+      let deliveredOrders = []
+      let deliveredSurpriseGifts = []
+
+      if (ordersResponse.ok) {
+        const ordersData = await ordersResponse.json()
+        if (ordersData.success) {
+          deliveredOrders = ordersData.orders || []
+        }
+      }
+
+      if (surpriseGiftsResponse.ok) {
+        const surpriseGiftsData = await surpriseGiftsResponse.json()
+        if (surpriseGiftsData.success) {
+          deliveredSurpriseGifts = surpriseGiftsData.surpriseGifts || []
+        }
+      }
+
+      // Combine and format history data
+      const combinedHistory = [
+        ...deliveredOrders.map(order => ({
+          ...order,
+          type: 'order',
+          productName: order.items?.[0]?.product?.name || order.items?.[0]?.name || 'Unknown Product',
+          deliveryDate: order.updatedAt || order.deliveredAt,
+          status: 'Completed'
+        })),
+        ...deliveredSurpriseGifts.map(gift => ({
+          ...gift,
+          type: 'surprise-gift',
+          productName: gift.items?.[0]?.product?.name || gift.items?.[0]?.name || 'Surprise Gift',
+          deliveryDate: gift.updatedAt || gift.deliveredAt,
+          status: 'Completed'
+        }))
+      ]
+
+      setDeliveryHistory(combinedHistory.sort((a, b) => new Date(b.deliveryDate) - new Date(a.deliveryDate)))
     } catch (error) {
       console.error("Error fetching delivery history:", error)
+      // Fallback to empty array instead of mock data for production
+      setDeliveryHistory([])
     } finally {
       setLoading(false)
     }
   }
 
   const updateOrderStatus = async (orderId, newStatus, notes = '', endpoint = null, itemType = 'orders', currentStatus = 'Shipping') => {
-    setStatusUpdateLoading(true)
+    setUpdatingOrderId(orderId)
+    setUpdatingOrderId(orderId) // Track which specific order is being updated
     try {
       // Use provided endpoint or default to orders endpoint
       const apiEndpoint = endpoint || `/delivery/orders/${orderId}/status`
       
+      // Include delivery staff ID in the request
+      const requestBody = {
+        status: newStatus,
+        notes,
+        currentStatus,
+        deliveryStaffId: userProfile?._id // Add delivery staff ID to link the delivery
+      }
+      
       const response = await authenticatedFetch(apiEndpoint, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus, notes, currentStatus })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
@@ -299,9 +404,12 @@ export default function DeliveryDashboard() {
         
         // Show success notification
         toast.success(`✅ ${itemType === 'orders' ? 'Order' : 'Surprise Gift'} marked as Delivered successfully!`, {
-          description: `${itemType === 'orders' ? 'Order' : 'Surprise Gift'} #${orderId} has been delivered and removed from your list.`,
+          description: `${itemType === 'orders' ? 'Order' : 'Surprise Gift'} #${orderId} has been delivered and recorded under your name.`,
           duration: 5000,
         })
+        
+        // Refresh delivery history to include the newly delivered item
+        await fetchDeliveryHistory()
       }
     } catch (error) {
       console.error(`Error updating ${itemType} status:`, error)
@@ -310,7 +418,8 @@ export default function DeliveryDashboard() {
         duration: 5000,
       })
     } finally {
-      setStatusUpdateLoading(false)
+      setUpdatingOrderId(null)
+      setUpdatingOrderId(null) // Clear the updating state
     }
   }
 
@@ -377,12 +486,16 @@ export default function DeliveryDashboard() {
         const isAuthenticated = await checkAuthentication()
         
         if (isAuthenticated) {
-          // User is authenticated, fetch dashboard data
+          // First, fetch user profile as other functions depend on it
+          const userProfileData = await fetchUserProfile()
+          
+          // Then fetch the rest of the data in parallel, passing staffId to history fetch
           await Promise.all([
             fetchOrders(),
             fetchStats(),
             fetchComplaints(),
-            fetchDeliveryHistory()
+            fetchDeliveryHistory(userProfileData?._id), // Pass staffId directly
+            fetchNotifications()
           ])
         } else {
           console.log('User not authenticated, redirecting to login...')
@@ -399,6 +512,13 @@ export default function DeliveryDashboard() {
     
     checkAuthAndFetch()
   }, [])
+
+  // Fetch delivery history when user profile becomes available
+  useEffect(() => {
+    if (userProfile?._id && deliveryHistory.length === 0) {
+      fetchDeliveryHistory(userProfile._id)
+    }
+  }, [userProfile])
 
   // Order Details Modal Component
 
@@ -441,7 +561,7 @@ export default function DeliveryDashboard() {
                 </Select>
                 <Button 
                   onClick={() => updateOrderStatus(order._id || order.id, selectedStatus, statusNotes)}
-                  disabled={statusUpdateLoading || selectedStatus === order.status}
+                  disabled={updatingOrderId === (order._id || order.id) || selectedStatus === order.status}
                   size="sm"
                   className="w-full sm:w-auto"
                 >
@@ -865,11 +985,11 @@ export default function DeliveryDashboard() {
                               {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
                                 <Button
                                   onClick={() => handleSubmit(order._id || order.id, orderType)}
-                                  disabled={statusUpdateLoading}
+                                  disabled={updatingOrderId === (order._id || order.id)}
                                   size="sm"
                                   className="rounded-[8px] bg-purple-600 hover:bg-purple-700 text-white font-medium w-full sm:w-auto"
                                 >
-                                  {statusUpdateLoading ? 'Updating...' : 'Mark Delivered'}
+                                  {updatingOrderId === (order._id || order.id) ? 'Updating...' : 'Mark Delivered'}
                                 </Button>
                               )}
                             </div>
@@ -971,11 +1091,11 @@ export default function DeliveryDashboard() {
                             {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
                               <Button
                                 onClick={() => handleSubmit(order._id || order.id, orderType)}
-                                disabled={statusUpdateLoading}
+                                disabled={updatingOrderId === (order._id || order.id)}
                                 size="sm"
                                 className="bg-purple-600 hover:bg-purple-700 text-white font-medium flex-1"
                               >
-                                {statusUpdateLoading ? 'Updating...' : 'Mark Delivered'}
+                                {updatingOrderId === (order._id || order.id) ? 'Updating...' : 'Mark Delivered'}
                               </Button>
                             )}
                           </div>
@@ -1108,7 +1228,50 @@ export default function DeliveryDashboard() {
       case "history":
         return (
           <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6">History List</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6">Delivery History</h2>
+            
+            {/* Stats Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Delivered</p>
+                      <p className="text-xl font-bold text-gray-900">{deliveryHistory.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Package className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Regular Orders</p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {deliveryHistory.filter(item => item.type === 'order').length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Package className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Surprise Gifts</p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {deliveryHistory.filter(item => item.type === 'surprise-gift').length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
@@ -1116,50 +1279,165 @@ export default function DeliveryDashboard() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product Name
+                      Order ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Product
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Delivery Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Completion Status
+                      Status
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {deliveryHistory.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.productName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.deliveryDate}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={getStatusBadgeColor(item.status)}>{item.status}</Badge>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-4 text-center">
+                        <div className="flex justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : deliveryHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                        No delivery history found
+                      </td>
+                    </tr>
+                  ) : (
+                    deliveryHistory.map((item) => (
+                      <tr key={`${item.type}-${item._id || item.id}`} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{item._id?.slice(-8) || item.id || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge className={item.type === 'order' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}>
+                            {item.type === 'order' ? 'Regular Order' : 'Surprise Gift'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {item.items && item.items.length > 0 && (
+                              <>
+                                <ProductImage
+                                  src={item.items[0].product?.images?.[0] || item.items[0].image || "/images/placeholder.png"}
+                                  alt={item.productName}
+                                  productName={item.productName}
+                                  width={40}
+                                  height={40}
+                                />
+                                <div className="ml-3">
+                                  <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                                  {item.items.length > 1 && (
+                                    <div className="text-sm text-gray-500">+{item.items.length - 1} more items</div>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {item.user?.firstName || item.recipientName || 'N/A'} {item.user?.lastName || ''}
+                            </div>
+                            <div className="text-sm text-gray-500">{item.user?.email || 'N/A'}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          ${item.total?.toFixed(2) || '0.00'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge className="bg-green-100 text-green-800">Delivered</Badge>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {deliveryHistory.map((item) => (
-                <Card key={item.id} className="border border-gray-200">
-                  <CardContent className="p-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-medium text-gray-900">{item.productName}</h3>
-                        <Badge className={getStatusBadgeColor(item.status)}>{item.status}</Badge>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                </div>
+              ) : deliveryHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No delivery history found
+                </div>
+              ) : (
+                deliveryHistory.map((item) => (
+                  <Card key={`${item.type}-${item._id || item.id}`} className="border border-gray-200">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-medium text-gray-900">#{item._id?.slice(-8) || item.id || 'N/A'}</h3>
+                          <div className="flex flex-col space-y-1">
+                            <Badge className={item.type === 'order' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}>
+                              {item.type === 'order' ? 'Regular Order' : 'Surprise Gift'}
+                            </Badge>
+                            <Badge className="bg-green-100 text-green-800">Delivered</Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="border-t pt-3">
+                          <div className="flex items-center space-x-3">
+                            {item.items && item.items.length > 0 && (
+                              <>
+                                <ProductImage
+                                  src={item.items[0].product?.images?.[0] || item.items[0].image || "/images/placeholder.png"}
+                                  alt={item.productName}
+                                  productName={item.productName}
+                                  width={48}
+                                  height={48}
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                                  {item.items.length > 1 && (
+                                    <div className="text-sm text-gray-500">+{item.items.length - 1} more items</div>
+                                  )}
+                                  <div className="text-sm font-medium text-purple-600">
+                                    ${item.total?.toFixed(2) || '0.00'}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="border-t pt-3">
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">
+                              {item.user?.firstName || item.recipientName || 'N/A'} {item.user?.lastName || ''}
+                            </div>
+                            <div className="text-gray-500">{item.user?.email || 'N/A'}</div>
+                            <div className="text-gray-500 mt-1">
+                              Delivered: {item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString() : 'N/A'}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      
-                      <div className="text-sm text-gray-500">
-                        Delivered: {item.deliveryDate}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         )
@@ -1184,7 +1462,9 @@ export default function DeliveryDashboard() {
     <div className="min-h-screen bg-gray-50">
       <NavigationBar 
         activeTab={activeTab} 
-        onTabChange={handleTabChange} 
+        onTabChange={handleTabChange}
+        userProfile={userProfile}
+        notifications={notifications}
       />
 
       {/* Main Content with proper spacing */}

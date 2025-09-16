@@ -5,12 +5,17 @@ const SurpriseGift = require('../models/SurpriseGift');
 // Get all orders for delivery staff management
 exports.getAllOrders = async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 10, deliveryStaff } = req.query;
     
     // Build filter object
     const filter = {};
     if (status && status !== 'all') {
       filter.status = status;
+    }
+    
+    // Filter by delivery staff if provided (for delivered items history)
+    if (deliveryStaff) {
+      filter.deliveryStaffId = deliveryStaff;
     }
 
     // Calculate pagination
@@ -51,8 +56,8 @@ exports.getAllOrders = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, notes } = req.body;
-    const deliveryStaffId = req.user._id;
+    const { status, notes, deliveryStaffId } = req.body;
+    const currentUserId = req.user._id;
 
     // Validate status
     const validStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
@@ -74,8 +79,14 @@ exports.updateOrderStatus = async (req, res) => {
 
     // Update order with delivery staff info
     order.status = status;
-    order.updatedBy = deliveryStaffId;
+    order.updatedBy = currentUserId;
     order.updatedAt = new Date();
+    
+    // Store delivery staff ID and delivery date when marking as delivered
+    if (status === 'Delivered' && deliveryStaffId) {
+      order.deliveryStaffId = deliveryStaffId;
+      order.deliveredAt = new Date();
+    }
     
     // Add status history
     if (!order.statusHistory) {
@@ -84,7 +95,7 @@ exports.updateOrderStatus = async (req, res) => {
     
     order.statusHistory.push({
       status,
-      updatedBy: deliveryStaffId,
+      updatedBy: currentUserId,
       updatedAt: new Date(),
       notes: notes || ''
     });
@@ -329,12 +340,17 @@ exports.searchOrders = async (req, res) => {
 // Get all surprise gifts for delivery staff management
 exports.getAllSurpriseGifts = async (req, res) => {
   try {
-    const { status = 'OutForDelivery', page = 1, limit = 10 } = req.query;
+    const { status = 'OutForDelivery', page = 1, limit = 10, deliveryStaff } = req.query;
     
     // Build filter object - only show OutForDelivery by default
     const filter = { status: 'OutForDelivery' };
     if (status && status !== 'all') {
       filter.status = status;
+    }
+    
+    // Filter by delivery staff if provided (for delivered items history)
+    if (deliveryStaff) {
+      filter.deliveryStaffId = deliveryStaff;
     }
 
     // Calculate pagination
@@ -375,7 +391,7 @@ exports.getAllSurpriseGifts = async (req, res) => {
 exports.updateSurpriseGiftStatus = async (req, res) => {
   try {
     const { surpriseGiftId } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, deliveryStaffId } = req.body;
 
     // Validate status
     const validStatuses = ['Pending', 'Scheduled', 'OutForDelivery', 'Delivered', 'Cancelled'];
@@ -397,6 +413,13 @@ exports.updateSurpriseGiftStatus = async (req, res) => {
 
     // Update surprise gift status
     surpriseGift.status = status;
+    
+    // Store delivery staff ID and delivery date when marking as delivered
+    if (status === 'Delivered' && deliveryStaffId) {
+      surpriseGift.deliveryStaffId = deliveryStaffId;
+      surpriseGift.deliveredAt = new Date();
+    }
+    
     await surpriseGift.save();
 
     // Populate the updated surprise gift
