@@ -9,7 +9,68 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui
 import { Input } from "../../../components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
-import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2 } from "lucide-react"
+import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2, X, AlertCircle } from "lucide-react"
+
+// Toast Notification Component
+const Toast = ({ message, type, isVisible, onClose }) => {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        onClose()
+      }, 4000) // Auto close after 4 seconds
+      return () => clearTimeout(timer)
+    }
+  }, [isVisible, onClose])
+
+  if (!isVisible) return null
+
+  const getToastStyle = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-50 border-green-200 text-green-800'
+      case 'error':
+        return 'bg-red-50 border-red-200 text-red-800'
+      case 'info':
+        return 'bg-blue-50 border-blue-200 text-blue-800'
+      default:
+        return 'bg-gray-50 border-gray-200 text-gray-800'
+    }
+  }
+
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="w-5 h-5 text-green-600" />
+      case 'error':
+        return <XCircle className="w-5 h-5 text-red-600" />
+      case 'info':
+        return <AlertCircle className="w-5 h-5 text-blue-600" />
+      default:
+        return <AlertCircle className="w-5 h-5 text-gray-600" />
+    }
+  }
+
+  return (
+    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+      <div className={`max-w-md p-4 rounded-lg border shadow-lg ${getToastStyle()}`}>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0">
+            {getIcon()}
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">{message}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 ml-2 hover:opacity-70 transition-opacity"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function SurpriseGiftManagement() {
   const [surpriseGifts, setSurpriseGifts] = useState([])
@@ -20,6 +81,27 @@ export default function SurpriseGiftManagement() {
   const [showDetails, setShowDetails] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  
+  // Toast notification state
+  const [toast, setToast] = useState({
+    isVisible: false,
+    message: '',
+    type: 'info'
+  })
+
+  // Function to show toast notification
+  const showToast = (message, type = 'info') => {
+    setToast({
+      isVisible: true,
+      message,
+      type
+    })
+  }
+
+  // Function to hide toast notification
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }))
+  }
 
   // Fetch surprise gifts
   useEffect(() => {
@@ -121,18 +203,18 @@ export default function SurpriseGiftManagement() {
             setSelectedGift({ ...selectedGift, status: newStatus, scheduledAt: scheduledAt })
           }
           
-          alert(`Surprise gift status updated to ${newStatus}. User will be notified via email and notification.`)
+          showToast(`Surprise gift status updated to ${newStatus}. User will be notified via email and notification.`, 'success')
         } else {
           console.error('Failed to update status:', data.message)
-          alert('Failed to update status: ' + data.message)
+          showToast(`Failed to update status: ${data.message}`, 'error')
         }
       } else {
         console.error('Failed to update status, status:', response.status)
-        alert('Failed to update status')
+        showToast('Failed to update status', 'error')
       }
     } catch (error) {
       console.error('Error updating status:', error)
-      alert('Error updating status')
+      showToast('Error updating status', 'error')
     }
   }
 
@@ -171,17 +253,17 @@ export default function SurpriseGiftManagement() {
           return true
         } else {
           console.error('Failed to reduce stock:', data.message)
-          alert('Failed to reduce product stock: ' + data.message)
+          showToast(`Failed to reduce product stock: ${data.message}`, 'error')
           return false
         }
       } else {
         console.error('Failed to reduce stock, status:', response.status)
-        alert('Failed to reduce product stock')
+        showToast('Failed to reduce product stock', 'error')
         return false
       }
     } catch (error) {
       console.error('Error reducing product stock:', error)
-      alert('Error reducing product stock')
+      showToast('Error reducing product stock', 'error')
       return false
     }
   }
@@ -238,17 +320,17 @@ export default function SurpriseGiftManagement() {
           return true
         } else {
           console.error('Failed to create order summary:', data.message)
-          alert('Failed to create order summary: ' + data.message)
+          showToast(`Failed to create order summary: ${data.message}`, 'error')
           return false
         }
       } else {
         console.error('Failed to create order summary, status:', response.status)
-        alert('Failed to create order summary')
+        showToast('Failed to create order summary', 'error')
         return false
       }
     } catch (error) {
       console.error('Error creating order summary:', error)
-      alert('Error creating order summary')
+      showToast('Error creating order summary', 'error')
       return false
     }
   }
@@ -511,7 +593,7 @@ export default function SurpriseGiftManagement() {
                               console.log('Ship process completed successfully!')
                             } catch (error) {
                               console.error('Error in ship process:', error)
-                              alert('Error processing ship request')
+                              showToast('Error processing ship request', 'error')
                             } finally {
                               // Remove from processing set
                               setProcessingGifts(prev => {
@@ -707,7 +789,7 @@ export default function SurpriseGiftManagement() {
                             console.log('Ship process completed successfully!')
                           } catch (error) {
                             console.error('Error in ship process:', error)
-                            alert('Error processing ship request')
+                            showToast('Error processing ship request', 'error')
                           } finally {
                             // Remove from processing set
                             setProcessingGifts(prev => {
@@ -753,6 +835,14 @@ export default function SurpriseGiftManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
     </div>
   )
 }
