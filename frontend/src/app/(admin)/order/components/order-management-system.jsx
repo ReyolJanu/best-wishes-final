@@ -183,7 +183,7 @@ export function OrderManagementSystem() {
 
       const response = await axios.put(`${API_BASE_URL}/products/reduce-stock`, {
         items: itemsToSend,
-      });
+      }, { withCredentials: true });
 
       if (response.data.success) {
         // console.log("Product stock updated successfully:", response.data);
@@ -234,7 +234,8 @@ export function OrderManagementSystem() {
         `${API_BASE_URL}/orders/update-to-packing`,
         {
           orderId: orderId,
-        }
+        },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
@@ -761,7 +762,8 @@ export function OrderManagementSystem() {
         `${API_BASE_URL}/orders/update-to-shipped`,
         {
           orderId,
-        }
+        },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
@@ -792,7 +794,8 @@ export function OrderManagementSystem() {
         `${API_BASE_URL}/orders/update-to-delivered`,
         {
           orderId,
-        }
+        },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
@@ -857,7 +860,7 @@ export function OrderManagementSystem() {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/orders/all`);
+      const response = await axios.get(`${API_BASE_URL}/orders/all`, { withCredentials: true });
       const ordersData = response.data.orders.map((order) => ({
         id: order._id,
         ...order,
@@ -875,7 +878,7 @@ export function OrderManagementSystem() {
       console.log("Expected format: http://localhost:5000/api");
       
       console.log("Fetching all collaborative purchases...");
-      const response = await axios.get(`${API_BASE_URL}/collaborative-purchases/all`);
+      const response = await axios.get(`${API_BASE_URL}/collaborative-purchases/all`, { withCredentials: true });
       console.log("API Response:", response.data); // Debugging log
 
       // Fix: Access the correct nested data structure
@@ -899,7 +902,7 @@ export function OrderManagementSystem() {
       // Test products endpoint connectivity
       console.log("🧪 Testing products database connectivity...");
       try {
-        const testResponse = await axios.get(`${API_BASE_URL}/products/test`);
+        const testResponse = await axios.get(`${API_BASE_URL}/products/test`, { withCredentials: true });
         console.log("✅ Products endpoint test successful:", testResponse.data);
       } catch (testError) {
         console.error("❌ Products endpoint test failed:", testError.response?.data || testError.message);
@@ -910,7 +913,7 @@ export function OrderManagementSystem() {
         const testProductId = relevantPurchases[0].products[0].product;
         console.log(`🧪 Testing specific product fetch with ID: ${testProductId}`);
         try {
-          const testProductResponse = await axios.get(`${API_BASE_URL}/products/${testProductId}`);
+          const testProductResponse = await axios.get(`${API_BASE_URL}/products/${testProductId}`, { withCredentials: true });
           console.log("✅ Specific product fetch test successful:", testProductResponse.data);
         } catch (testProductError) {
           console.error("❌ Specific product fetch test failed:");
@@ -937,7 +940,7 @@ export function OrderManagementSystem() {
               console.log(`\n🔍 Fetching user details for createdBy: ${purchase.createdBy}`);
               console.log(`🌐 User API URL: ${API_BASE_URL}/users/${purchase.createdBy}`);
               
-              const userResponse = await axios.get(`${API_BASE_URL}/users/${purchase.createdBy}`);
+              const userResponse = await axios.get(`${API_BASE_URL}/users/${purchase.createdBy}`, { withCredentials: true });
               console.log("📡 User API Response Status:", userResponse.status);
               console.log("📡 User API Response Data:", userResponse.data);
               
@@ -1002,7 +1005,7 @@ export function OrderManagementSystem() {
                     console.log(`🔍 Fetching product details for product ID: ${product.product}`);
                     console.log(`🌐 Product API URL: ${API_BASE_URL}/products/${product.product}`);
                     
-                    const productResponse = await axios.get(`${API_BASE_URL}/products/${product.product}`);
+                    const productResponse = await axios.get(`${API_BASE_URL}/products/${product.product}`, { withCredentials: true });
                     console.log("📡 Product API Response Status:", productResponse.status);
                     console.log("📡 Product API Response Data:", productResponse.data);
                     
@@ -1104,7 +1107,7 @@ export function OrderManagementSystem() {
             if (purchase.product) {
               try {
                 console.log(`Fetching single product details for product ID: ${purchase.product}`);
-                const productResponse = await axios.get(`${API_BASE_URL}/products/${purchase.product}`);
+                const productResponse = await axios.get(`${API_BASE_URL}/products/${purchase.product}`, { withCredentials: true });
                 const productData = productResponse.data.product || {};
                 
                 productDetails = {
@@ -1236,7 +1239,7 @@ export function OrderManagementSystem() {
     const fetchAllData = async () => {
       try {
         // Fetch orders first
-        const response = await axios.get(`${API_BASE_URL}/orders/all`)
+        const response = await axios.get(`${API_BASE_URL}/orders/all`, { withCredentials: true })
         console.log('API Response:', response.data.orders);
 
         response.data.orders.forEach((order) => {
