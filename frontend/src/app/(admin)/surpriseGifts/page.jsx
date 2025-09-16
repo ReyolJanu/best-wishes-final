@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui
 import { Input } from "../../../components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
-import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle } from "lucide-react"
+import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2 } from "lucide-react"
 
 export default function SurpriseGiftManagement() {
   const [surpriseGifts, setSurpriseGifts] = useState([])
   const [filteredGifts, setFilteredGifts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [processingGifts, setProcessingGifts] = useState(new Set()) // Track which gifts are being processed
   const [selectedGift, setSelectedGift] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -58,6 +59,23 @@ export default function SurpriseGiftManagement() {
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
+          // Extract product IDs from items for debugging
+          const productIds = []
+          data.data.forEach(gift => {
+            if (gift.items && Array.isArray(gift.items)) {
+              gift.items.forEach(item => {
+                if (item.product) {
+                  productIds.push({
+                    giftId: gift._id,
+                    productId: item.product,
+                    quantity: item.quantity
+                  })
+                }
+              })
+            }
+          })
+          console.log('Product IDs extracted from surprise gifts:', productIds)
+          
           setSurpriseGifts(data.data)
         } else {
           console.error('Failed to fetch surprise gifts:', data.message)
@@ -118,6 +136,123 @@ export default function SurpriseGiftManagement() {
     }
   }
 
+  const reduceProductQuantity = async (giftId) => {
+    try {
+      // Find the gift to get its items
+      const gift = surpriseGifts.find(g => g._id === giftId)
+      if (!gift || !gift.items) {
+        console.error('Gift not found or has no items')
+        return false
+      }
+
+      // Extract product IDs and quantities
+      const productUpdates = gift.items.map(item => ({
+        productId: item.product._id || item.product,
+        quantity: item.quantity
+      }))
+
+      console.log('Reducing stock for products:', productUpdates)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/reduce-stock`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          items: productUpdates
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          console.log('Stock reduced successfully:', data.message)
+          return true
+        } else {
+          console.error('Failed to reduce stock:', data.message)
+          alert('Failed to reduce product stock: ' + data.message)
+          return false
+        }
+      } else {
+        console.error('Failed to reduce stock, status:', response.status)
+        alert('Failed to reduce product stock')
+        return false
+      }
+    } catch (error) {
+      console.error('Error reducing product stock:', error)
+      alert('Error reducing product stock')
+      return false
+    }
+  }
+
+  const createOrderSummary = async (giftId) => {
+    try {
+      // Find the gift to get its items
+      const gift = surpriseGifts.find(g => g._id === giftId)
+      if (!gift || !gift.items) {
+        console.error('Gift not found or has no items')
+        return false
+      }
+
+      // Create order summary records for each item
+      const orderSummaryRecords = gift.items.map(item => {
+        const product = item.product
+        const salePrice = product.salePrice || product.retailPrice || product.price || 0
+        const costPrice = product.costPrice || 0
+        const retailPrice = product.retailPrice || product.price || 0
+        const profit = salePrice - costPrice
+
+        return {
+          giftId: giftId,
+          productSKU: product.sku || product._id,
+          productId: product._id,
+          productName: product.name,
+          quantity: item.quantity,
+          costPrice: costPrice,
+          retailPrice: retailPrice,
+          salePrice: salePrice,
+          profit: profit,
+          totalProfit: profit * item.quantity,
+          orderDate: new Date().toISOString()
+        }
+      })
+
+      console.log('Creating order summary records:', orderSummaryRecords)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/order-summary/create`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          records: orderSummaryRecords
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          console.log('Order summary created successfully:', data.message)
+          return true
+        } else {
+          console.error('Failed to create order summary:', data.message)
+          alert('Failed to create order summary: ' + data.message)
+          return false
+        }
+      } else {
+        console.error('Failed to create order summary, status:', response.status)
+        alert('Failed to create order summary')
+        return false
+      }
+    } catch (error) {
+      console.error('Error creating order summary:', error)
+      alert('Error creating order summary')
+      return false
+    }
+  }
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       'Pending': { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
@@ -151,6 +286,11 @@ export default function SurpriseGiftManagement() {
     return stats
   }
 
+  const refreshGifts = async () => {
+    setLoading(true);
+    await fetchSurpriseGifts();
+  };
+
   const stats = getStats()
 
   if (loading) {
@@ -176,9 +316,15 @@ export default function SurpriseGiftManagement() {
           <h1 className="text-3xl font-bold">Surprise Gift Management</h1>
           <p className="text-gray-600">Manage surprise gift orders and deliveries</p>
         </div>
+        <Button
+          size="sm"
+          onClick={refreshGifts}
+          className="bg-gray-600 hover:bg-gray-700 text-white"
+        >
+          Refresh
+        </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -338,10 +484,54 @@ export default function SurpriseGiftManagement() {
                       {gift.status === 'Scheduled' && (
                         <Button
                           size="sm"
-                          onClick={() => updateGiftStatus(gift._id, 'OutForDelivery')}
-                          className="bg-orange-600 hover:bg-orange-700"
+                          onClick={async () => {
+                            const giftId = gift._id
+                            // Add to processing set to show loading
+                            setProcessingGifts(prev => new Set([...prev, giftId]))
+                            
+                            try {
+                              // Step 1: Reduce product stock
+                              console.log('Step 1: Reducing product stock...')
+                              const stockReduced = await reduceProductQuantity(giftId)
+                              if (!stockReduced) {
+                                return // Exit if stock reduction failed
+                              }
+                              
+                              // Step 2: Create order summary records
+                              console.log('Step 2: Creating order summary...')
+                              const orderSummaryCreated = await createOrderSummary(giftId)
+                              if (!orderSummaryCreated) {
+                                return // Exit if order summary creation failed
+                              }
+                              
+                              // Step 3: Update gift status to OutForDelivery
+                              console.log('Step 3: Updating gift status...')
+                              await updateGiftStatus(giftId, 'OutForDelivery')
+                              
+                              console.log('Ship process completed successfully!')
+                            } catch (error) {
+                              console.error('Error in ship process:', error)
+                              alert('Error processing ship request')
+                            } finally {
+                              // Remove from processing set
+                              setProcessingGifts(prev => {
+                                const newSet = new Set(prev)
+                                newSet.delete(giftId)
+                                return newSet
+                              })
+                            }
+                          }}
+                          disabled={processingGifts.has(gift._id)}
+                          className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
                         >
-                          Ship
+                          {processingGifts.has(gift._id) ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            'Ship'
+                          )}
                         </Button>
                       )}
                       {gift.status === 'OutForDelivery' && (
@@ -490,10 +680,54 @@ export default function SurpriseGiftManagement() {
                     )}
                     {selectedGift.status === 'Scheduled' && (
                       <Button
-                        onClick={() => updateGiftStatus(selectedGift._id, 'OutForDelivery')}
-                        className="bg-orange-600 hover:bg-orange-700"
+                        onClick={async () => {
+                          const giftId = selectedGift._id
+                          // Add to processing set to show loading
+                          setProcessingGifts(prev => new Set([...prev, giftId]))
+                          
+                          try {
+                            // Step 1: Reduce product stock
+                            console.log('Step 1: Reducing product stock...')
+                            const stockReduced = await reduceProductQuantity(giftId)
+                            if (!stockReduced) {
+                              return // Exit if stock reduction failed
+                            }
+                            
+                            // Step 2: Create order summary records
+                            console.log('Step 2: Creating order summary...')
+                            const orderSummaryCreated = await createOrderSummary(giftId)
+                            if (!orderSummaryCreated) {
+                              return // Exit if order summary creation failed
+                            }
+                            
+                            // Step 3: Update gift status to OutForDelivery
+                            console.log('Step 3: Updating gift status...')
+                            await updateGiftStatus(giftId, 'OutForDelivery')
+                            
+                            console.log('Ship process completed successfully!')
+                          } catch (error) {
+                            console.error('Error in ship process:', error)
+                            alert('Error processing ship request')
+                          } finally {
+                            // Remove from processing set
+                            setProcessingGifts(prev => {
+                              const newSet = new Set(prev)
+                              newSet.delete(giftId)
+                              return newSet
+                            })
+                          }
+                        }}
+                        disabled={processingGifts.has(selectedGift._id)}
+                        className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
                       >
-                        Mark as Out for Delivery
+                        {processingGifts.has(selectedGift._id) ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          'Mark as Out for Delivery'
+                        )}
                       </Button>
                     )}
                     {selectedGift.status === 'OutForDelivery' && (
