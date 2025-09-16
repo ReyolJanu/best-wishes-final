@@ -35,16 +35,16 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
   // Filter orders
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerPhone.toLowerCase().includes(searchTerm.toLowerCase())
+      (order.id || order._id || '').toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ((order.user?.firstName || '') + ' ' + (order.user?.lastName || '')).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.user?.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.user?.phone || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || order.status === statusFilter
     const matchesPayment = paymentFilter === "all" || order.paymentStatus === paymentFilter
     const matchesShipping = shippingFilter === "all" || order.shippingMethod === shippingFilter
 
-    const orderDate = new Date(order.date)
+    const orderDate = new Date(order.orderedAt)
     const matchesDateRange =
       (!dateRange.from || orderDate >= dateRange.from) && (!dateRange.to || orderDate <= dateRange.to)
 
@@ -53,7 +53,7 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
 
   const handleSelectAll = (checked) => {
     if (checked) {
-      setSelectedOrders(filteredOrders.map((order) => order.id))
+      setSelectedOrders(filteredOrders.map((order) => order.id || order._id))
     } else {
       setSelectedOrders([])
     }
@@ -87,8 +87,11 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
           "Order ID,Customer,Date,Status,Payment,Total\n" +
           selectedOrders
             .map((id) => {
-              const order = orders.find((o) => o.id === id)
-              return `${order.id},${order.customerName},${order.date},${order.status},${order.paymentStatus},${order.total}`
+              const order = orders.find((o) => (o.id || o._id) === id)
+              const customerName = order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'
+              const orderDate = new Date(order.orderedAt).toLocaleDateString()
+              const orderId = order.id || order._id
+              return `${orderId},${customerName},${orderDate},${order.status},${order.paymentStatus},${order.total}`
             })
             .join("\n")
 
@@ -295,33 +298,35 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-muted/50">
+                  filteredOrders.map((order) => {
+                    const orderId = order.id || order._id;
+                    return (
+                    <TableRow key={orderId} className="hover:bg-muted/50">
                       <TableCell>
                         <Checkbox
-                          checked={selectedOrders.includes(order.id)}
-                          onCheckedChange={(checked) => handleSelectOrder(order.id, checked)}
+                          checked={selectedOrders.includes(orderId)}
+                          onCheckedChange={(checked) => handleSelectOrder(orderId, checked)}
                         />
                       </TableCell>
                       <TableCell>
                         <Button
                           variant="link"
                           className="p-0 h-auto font-medium text-blue-600 hover:text-blue-800"
-                          onClick={() => onOrderSelect(order.id)}
+                          onClick={() => onOrderSelect(orderId)}
                         >
-                          #{order.id}
+                          #{orderId}
                         </Button>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{order.customerName}</p>
-                          <p className="text-xs text-muted-foreground">{order.customerEmail}</p>
+                          <p className="font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</p>
+                          <p className="text-xs text-muted-foreground">{order.user?.email || 'N/A'}</p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="font-medium">{order.date}</div>
-                          <div className="text-muted-foreground">{order.time}</div>
+                          <div className="font-medium">{new Date(order.orderedAt).toLocaleDateString()}</div>
+                          <div className="text-muted-foreground">{new Date(order.orderedAt).toLocaleTimeString()}</div>
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
@@ -335,7 +340,7 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => onOrderSelect(order.id)}
+                            onClick={() => onOrderSelect(orderId)}
                             className="h-8 w-8 p-0"
                           >
                             <Eye className="w-4 h-4" />
@@ -343,7 +348,7 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => onOrderSelect(order.id)}
+                            onClick={() => onOrderSelect(orderId)}
                             className="h-8 w-8 p-0"
                           >
                             <Edit className="w-4 h-4" />
@@ -352,7 +357,7 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              setSelectedOrders([order.id])
+                              setSelectedOrders([orderId])
                               handleBulkAction("delete")
                             }}
                             className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
@@ -362,7 +367,8 @@ export function OrdersList({ orders, onOrderSelect, onOrderUpdate, onBulkUpdate,
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

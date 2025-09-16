@@ -38,7 +38,30 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 			if (result.error) {
 				toast.error(result.error.message || "Payment failed");
 			} else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
-				toast.success("Payment successful");
+				// Create order after successful payment
+				try {
+					const orderData = {
+						items: [{
+							productId: product._id,
+							name: product.name,
+							price: (product.salePrice > 0 ? product.salePrice : product.retailPrice),
+							quantity: qty,
+							image: (product.images && product.images[0] && (product.images[0].url || product.images[0])) || "/placeholder.svg"
+						}],
+						total: amount,
+						status: "Processing"
+					};
+
+					await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, orderData, {
+						withCredentials: true
+					});
+
+					toast.success("Payment successful! Order created.");
+				} catch (orderError) {
+					console.error("Failed to create order:", orderError);
+					toast.error("Payment successful, but failed to create order record. Please contact support.");
+				}
+				
 				router.push("/user/history");
 			}
 		} catch (err) {

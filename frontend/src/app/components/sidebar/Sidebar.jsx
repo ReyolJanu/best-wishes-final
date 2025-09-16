@@ -460,9 +460,9 @@ const getNavigationData = (role) => {
       icon: ShoppingBag,
       items: [
         {
-          title: "Products ",
+          title: "Products",
           icon: Search,
-          href: "/productsmanage",
+          href: "/productsInventory",
         },
       ],
     },
@@ -473,17 +473,7 @@ const getNavigationData = (role) => {
         {
           title: "All Orders",
           icon: ShoppingCart,
-          href: "/inventory/orders",
-        },
-        {
-          title: "Pending Orders",
-          icon: Clock,
-          href: "/inventory/orders/pending",
-        },
-        {
-          title: "Completed Orders",
-          icon: CheckCircle,
-          href: "/inventory/orders/completed",
+          href: "/orders",
         },
       ],
     },
@@ -494,12 +484,7 @@ const getNavigationData = (role) => {
         {
           title: "View Low Stock",
           icon: Eye,
-          href: "/inventory/alerts/low-stock",
-        },
-        {
-          title: "Restock Requests",
-          icon: RefreshCw,
-          href: "/inventory/alerts/restock",
+          href: "/productsInventory?filter=low-stock",
         },
       ],
     },

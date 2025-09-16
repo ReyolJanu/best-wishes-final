@@ -5,10 +5,25 @@ import { AlertTriangle, Home } from 'lucide-react';
 import { useSelector } from 'react-redux';
 
 
-const WarningModal = ({ isOpen, onClose }) => {
+const WarningModal = ({ isOpen, onClose, requiredRole = 'admin' }) => {
   const [countdown, setCountdown] = useState(15);
   const router = useRouter();
   const { user } = useSelector(state => state.userState);
+
+  // Get role display name
+  const getRoleDisplayName = (role) => {
+    switch (role) {
+      case 'admin':
+        return 'Admin';
+      case 'inventoryManager':
+        return 'Inventory Manager';
+      case 'deliveryStaff':
+        return 'Delivery Staff';
+      default:
+        return role;
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -51,7 +66,10 @@ const WarningModal = ({ isOpen, onClose }) => {
           {/* Warning Message */}
            <p className="text-gray-600 mb-6 leading-relaxed">
              Dear <span className="font-bold text-red-500">{user?.firstName || 'User'}</span>,
-             {!user ? 'You need to be logged in to access this page. ' : 'Your access has been denied! Only Admin users can access this page. '}
+             {!user 
+               ? 'You need to be logged in to access this page. ' 
+               : `Your access has been denied! Only ${getRoleDisplayName(requiredRole)} users can access this page. `
+             }
              You will be automatically redirected to the home page in{' '}
              <span className="font-bold text-red-600">{countdown}</span> seconds.
            </p>

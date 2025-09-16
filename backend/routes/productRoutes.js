@@ -20,6 +20,7 @@ const {
   reduceStock,
 } = require("../controllers/productController");
 const { validateProduct } = require("../middleware/validation");
+const { isAuthenticated, authorizeRoles } = require("../middleware/authMiddleware");
 
 // Test route to check if products exist
 router.get("/test", async (req, res) => {
@@ -42,12 +43,15 @@ router.get("/test", async (req, res) => {
   }
 });
 
+// Public routes (no authentication required)
 router.get("/", getAllProducts);
 router.get("/filter", getAllProducts);
-router.put("/reduce-stock", reduceStock); // New route for stock reduction - must come before /:id routes
 router.get("/:id", getProduct);
-router.post("/", validateProduct, createProduct);
-router.put("/:id", validateProduct, updateProduct);
-router.delete("/:id", deleteProduct);
+
+// Protected routes for admin and inventory manager
+router.put("/reduce-stock", isAuthenticated, authorizeRoles('admin', 'inventoryManager'), reduceStock);
+router.post("/", isAuthenticated, authorizeRoles('admin', 'inventoryManager'), validateProduct, createProduct);
+router.put("/:id", isAuthenticated, authorizeRoles('admin', 'inventoryManager'), validateProduct, updateProduct);
+router.delete("/:id", isAuthenticated, authorizeRoles('admin', 'inventoryManager'), deleteProduct);
 
 module.exports = router;

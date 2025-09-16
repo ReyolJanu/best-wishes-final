@@ -74,7 +74,7 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Package className="h-6 w-6" />
-                <span>Order #{order.id}</span>
+                <span>Order #{order.id || order._id}</span>
                 {getStatusBadge(order.status)}
               </div>
               <div className="flex gap-2">
@@ -109,12 +109,12 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium">Order ID</label>
-                      <p className="text-sm text-muted-foreground font-mono">#{order.id}</p>
+                      <p className="text-sm text-muted-foreground font-mono">#{order.id || order._id}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium">Date & Time</label>
                       <p className="text-sm text-muted-foreground">
-                        {order.date} at {order.time}
+                        {new Date(order.orderedAt).toLocaleDateString()} at {new Date(order.orderedAt).toLocaleTimeString()}
                       </p>
                     </div>
                   </div>
@@ -181,12 +181,12 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                             : "outline"
                       }
                     >
-                      {order.paymentStatus}
+                      {order.paymentStatus || 'Unknown'}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Shipping Method:</span>
-                    <Badge variant="outline">{order.shippingMethod}</Badge>
+                    <Badge variant="outline">{order.shippingMethod || 'N/A'}</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -206,7 +206,7 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                   <div className="flex items-center gap-3">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{order.customerName}</p>
+                      <p className="font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</p>
                       <p className="text-sm text-muted-foreground">Customer</p>
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm">{order.customerEmail}</p>
+                      <p className="text-sm">{order.user?.email || 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">Email</p>
                     </div>
                   </div>
@@ -239,12 +239,12 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-sm space-y-1">
-                    <p className="font-medium">{order.customerName}</p>
-                    <p>{order.shippingAddress.street}</p>
+                    <p className="font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</p>
+                    <p>{order.shippingAddress?.street || 'N/A'}</p>
                     <p>
-                      {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}
+                      {order.shippingAddress?.city || 'N/A'}, {order.shippingAddress?.state || 'N/A'} {order.shippingAddress?.zip || 'N/A'}
                     </p>
-                    <p>{order.shippingAddress.country}</p>
+                    <p>{order.shippingAddress?.country || 'N/A'}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -259,12 +259,12 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-sm space-y-1">
-                    <p className="font-medium">{order.customerName}</p>
-                    <p>{order.billingAddress.street}</p>
+                    <p className="font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</p>
+                    <p>{order.billingAddress?.street || 'N/A'}</p>
                     <p>
-                      {order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.zip}
+                      {order.billingAddress?.city || 'N/A'}, {order.billingAddress?.state || 'N/A'} {order.billingAddress?.zip || 'N/A'}
                     </p>
-                    <p>{order.billingAddress.country}</p>
+                    <p>{order.billingAddress?.country || 'N/A'}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -280,18 +280,18 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                   <div className="space-y-4">
                     {/* Order Items */}
                     <div className="space-y-3">
-                      {order.items.map((item, index) => (
+                      {(order.items || []).map((item, index) => (
                         <div key={index} className="flex justify-between items-start p-3 bg-muted/50 rounded-lg">
                           <div className="flex-1">
-                            <p className="font-medium text-sm">{item.name}</p>
+                            <p className="font-medium text-sm">{item.name || 'Unknown Item'}</p>
                             <p className="text-xs text-muted-foreground">
-                              Variant: {item.variant} • Qty: {item.quantity}
+                              Variant: {item.variant || 'N/A'} • Qty: {item.quantity || 0}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium text-sm">${item.price.toFixed(2)}</p>
+                            <p className="font-medium text-sm">${(item.price || 0).toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">
-                              ${(item.price * item.quantity).toFixed(2)} total
+                              ${((item.price || 0) * (item.quantity || 0)).toFixed(2)} total
                             </p>
                           </div>
                         </div>
@@ -304,20 +304,20 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Subtotal:</span>
-                        <span>${order.subtotal.toFixed(2)}</span>
+                        <span>${(order.subtotal || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Shipping:</span>
-                        <span>${order.shipping.toFixed(2)}</span>
+                        <span>${(order.shipping || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Tax:</span>
-                        <span>${order.tax.toFixed(2)}</span>
+                        <span>${(order.tax || 0).toFixed(2)}</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between font-bold text-lg">
                         <span>Total:</span>
-                        <span>${order.total.toFixed(2)}</span>
+                        <span>${(order.total || 0).toFixed(2)}</span>
                       </div>
                     </div>
 
@@ -331,7 +331,7 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           <span>
-                            Order placed on {order.date} at {order.time}
+                            Order placed on {new Date(order.orderedAt).toLocaleDateString()} at {new Date(order.orderedAt).toLocaleTimeString()}
                           </span>
                         </div>
                         {order.status !== "Pending" && (
@@ -355,7 +355,7 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
           </div>
 
           <div className="mt-6">
-            <DeliveryPrintDetails order={order} onPrint={() => console.log("Printing order:", order.id)} />
+            <DeliveryPrintDetails order={order} onPrint={() => console.log("Printing order:", order.id || order._id)} />
           </div>
         </DialogContent>
       </Dialog>
@@ -364,7 +364,7 @@ export function OrderDetails({ order, onClose, onUpdate, onDelete }) {
       <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Order #{order.id}</AlertDialogTitle>
+            <AlertDialogTitle>Cancel Order #{order.id || order._id}</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to cancel this order? This action cannot be undone and the customer will be
               notified.

@@ -6,7 +6,8 @@ require('dotenv').config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2024-06-20' });
 
-router.post('/create-intent', isAuthenticated, async (req, res) => {
+// Create payment intent for collaborative purchases (public access) or authenticated users
+router.post('/create-intent', async (req, res) => {
 	try {
 		const { amount, currency, metadata } = req.body;
 		if (!amount || !currency) {

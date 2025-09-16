@@ -31,7 +31,12 @@ export const fetchUserProfile = () => async (dispatch) => {
       console.log('No user data in response:', response.data);
     }
   } catch (error) {
-    console.error('Error fetching user profile:', error.response?.data?.message || error.message);
+    // Don't log authentication errors as errors since many pages don't require login
+    if (error.response?.status === 401) {
+      console.log('User not authenticated - this is expected for public pages');
+    } else {
+      console.error('Error fetching user profile:', error.response?.data?.message || error.message);
+    }
   }
 };
 

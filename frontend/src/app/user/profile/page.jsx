@@ -618,15 +618,15 @@ export default function ProfilePage() {
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                               <div className="text-lg font-semibold text-gray-900">
-                                {orders[0]?.orderedAt ? new Date(orders[0].orderedAt).toLocaleDateString() : "N/A"}
+                                {orders.length > 0 ? new Date(orders[0].orderedAt).toLocaleDateString() : "N/A"}
                               </div>
                               <div className="text-sm text-gray-500">Last Order</div>
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                               <div className="text-lg font-semibold text-gray-900">
-                                {orders.filter(o => o.status === 'Delivered').length}
+                                ${orders.reduce((total, order) => total + (order.total || 0), 0).toFixed(2)}
                               </div>
-                              <div className="text-sm text-gray-500">Delivered Orders</div>
+                              <div className="text-sm text-gray-500">Total Spent</div>
                             </div>
                           </div>
 
@@ -637,16 +637,39 @@ export default function ProfilePage() {
                               <div className="space-y-3">
                                 {orders.slice(0, 3).map((order) => (
                                   <div key={order._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                    <div>
-                                      <div className="font-medium text-gray-900">Order #{order._id.slice(-6)}</div>
-                                      <div className="text-sm text-gray-500">{new Date(order.orderedAt).toLocaleDateString()}</div>
+                                    <div className="flex items-center gap-3">
+                                      {order.items && order.items[0] && order.items[0].product && (
+                                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200">
+                                          <img
+                                            src={
+                                              order.items[0].product.images && order.items[0].product.images.length > 0
+                                                ? (order.items[0].product.images[0].url || order.items[0].product.images[0])
+                                                : '/placeholder.svg'
+                                            }
+                                            alt={order.items[0].product.name || 'Product'}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              e.target.src = '/placeholder.svg';
+                                            }}
+                                          />
+                                        </div>
+                                      )}
+                                      <div>
+                                        <div className="font-medium text-gray-900">Order #{order._id.slice(-6)}</div>
+                                        <div className="text-sm text-gray-500">{new Date(order.orderedAt).toLocaleDateString()}</div>
+                                        {order.items && order.items.length > 1 && (
+                                          <div className="text-xs text-gray-400">+{order.items.length - 1} more items</div>
+                                        )}
+                                      </div>
                                     </div>
                                     <div className="text-right">
-                                      <div className="font-medium text-gray-900">${order.totalAmount}</div>
+                                      <div className="font-medium text-gray-900">${order.total?.toFixed(2) || '0.00'}</div>
                                       <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                                         order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                                        order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-blue-100 text-blue-800'
+                                        order.status === 'Shipped' ? 'bg-blue-100 text-blue-800' :
+                                        order.status === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
+                                        order.status === 'Packing' ? 'bg-orange-100 text-orange-800' :
+                                        'bg-gray-100 text-gray-800'
                                       }`}>
                                         {order.status}
                                       </span>

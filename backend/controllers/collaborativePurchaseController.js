@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const { sendEmail } = require('../config/emailConfig');
 const crypto = require('crypto');
 require('dotenv').config();
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 // Create collaborative purchase
 const createCollaborativePurchase = async (req, res) => {
@@ -171,11 +172,15 @@ const createCollaborativePurchase = async (req, res) => {
         console.log('Setting email data for single product:', {
           productName: collaborativePurchaseData.productName,
           productPrice: collaborativePurchaseData.productPrice,
+          totalAmount: totalAmount,
           isMultiProduct: false
         });
         emailData.productName = collaborativePurchaseData.productName;
         emailData.productPrice = collaborativePurchaseData.productPrice;
+        emailData.totalAmount = totalAmount;
         emailData.isMultiProduct = false;
+        // For single product, set products to undefined explicitly
+        emailData.products = undefined;
       }
 
       await sendInvitationEmail(participant.email, participant.paymentLink, emailData);
@@ -198,7 +203,10 @@ const createCollaborativePurchase = async (req, res) => {
       // Single product creator email data (legacy)
       creatorEmailData.productName = collaborativePurchaseData.productName;
       creatorEmailData.productPrice = collaborativePurchaseData.productPrice;
+      creatorEmailData.totalAmount = totalAmount;
       creatorEmailData.isMultiProduct = false;
+      // For single product, set products to undefined explicitly
+      creatorEmailData.products = undefined;
     }
 
     await sendCreatorConfirmationEmail(req.user.email, creatorEmailData);
@@ -532,7 +540,8 @@ const sendInvitationEmail = async (email, paymentLink, data) => {
                         <p style="margin: 0 0 10px;">Total Price: <strong>$${totalAmount ? totalAmount.toFixed(2) : '0.00'}</strong></p>
                       ` : `
                         <p style="margin: 0 0 10px;"><strong>${productName || 'Product'}</strong></p>
-                        <p style="margin: 0 0 10px;">Total Price: <strong>$${productPrice ? productPrice.toFixed(2) : '0.00'}</strong></p>
+                        <p style="margin: 0 0 10px;">Unit Price: <strong>$${productPrice ? productPrice.toFixed(2) : '0.00'}</strong></p>
+                        <p style="margin: 0 0 10px;">Total Price: <strong>$${totalAmount ? totalAmount.toFixed(2) : '0.00'}</strong></p>
                       `}
                       <p style="margin: 0 0 10px;">Your Share: <strong>$${shareAmount.toFixed(2)}</strong></p>
                       <p style="margin: 0 0 20px;">Deadline: <strong>${deadline.toDateString()}</strong></p>
@@ -540,7 +549,7 @@ const sendInvitationEmail = async (email, paymentLink, data) => {
                   </tr>
                   <tr>
                     <td align="center" style="padding: 20px 0;">
-                      <a href="${process.env.FRONTEND_URL}/collaborative-payment/${paymentLink}"
+                          <a href="${process.env.FRONTEND_URL}/collaborative-payment/${paymentLink}"
                          style="background-color: #6B46C1; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; display: inline-block;">
                         💳 Pay Your Share
                       </a>
@@ -608,7 +617,8 @@ const sendCreatorConfirmationEmail = async (email, data) => {
                         <p style="margin: 0 0 10px;">Total Price: <strong>$${totalAmount ? totalAmount.toFixed(2) : '0.00'}</strong></p>
                       ` : `
                         <p style="margin: 0 0 10px;"><strong>${productName || 'Product'}</strong></p>
-                        <p style="margin: 0 0 10px;">Total Price: <strong>$${productPrice ? productPrice.toFixed(2) : '0.00'}</strong></p>
+                        <p style="margin: 0 0 10px;">Unit Price: <strong>$${productPrice ? productPrice.toFixed(2) : '0.00'}</strong></p>
+                        <p style="margin: 0 0 10px;">Total Price: <strong>$${totalAmount ? totalAmount.toFixed(2) : '0.00'}</strong></p>
                       `}
                       <p style="margin: 0 0 10px;">Your Share: <strong>$${shareAmount.toFixed(2)}</strong></p>
                       <p style="margin: 0 0 10px;">Participants: <strong>${participants.length + 1}</strong></p>

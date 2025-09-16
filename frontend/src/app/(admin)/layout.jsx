@@ -24,7 +24,8 @@ export default function RootLayout({ children }) {
         <AuthNavbar />
         <WarningModal 
           isOpen={showWarning} 
-          onClose={() => setShowWarning(false)} 
+          onClose={() => setShowWarning(false)}
+          requiredRole="admin"
         />
         <Toaster position="top-center" richColors closeButton />
       </>

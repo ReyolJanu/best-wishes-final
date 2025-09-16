@@ -167,3 +167,36 @@ exports.updateOrderToDelivered = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
   }
 };
+
+// Delete order (only if not yet shipped)
+exports.deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID is required' });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if the order belongs to the requesting user
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own orders' });
+    }
+
+    // Only allow deletion if order is not yet shipped or delivered
+    if (order.status === 'Shipped' || order.status === 'Delivered') {
+      return res.status(400).json({ success: false, message: 'Cannot delete orders that have been shipped or delivered' });
+    }
+
+    await Order.findByIdAndDelete(orderId);
+
+    res.status(200).json({ success: true, message: 'Order deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete order', error: err.message });
+  }
+};

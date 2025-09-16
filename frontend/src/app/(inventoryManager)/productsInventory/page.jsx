@@ -1,11 +1,14 @@
+"use client"
+
 import React from 'react'
-import ProductDashboard from '../../(admin)/prodectmanage/ProductDashboard'
-const page = () => {
+import InventoryProductDashboard from '../components/InventoryProductDashboard'
+
+const InventoryProductManagement = () => {
   return (
     <div>
-        <ProductDashboard/>
+      <InventoryProductDashboard />
     </div>
   )
 }
 
-export default page
+export default InventoryProductManagement

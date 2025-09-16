@@ -27,7 +27,7 @@ export function DeliveryPrintDetails({ order, onPrint }) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Delivery Invoice - Order #${order.id}</title>
+          <title>Delivery Invoice - Order #${order.id || order._id}</title>
           <style>
             body { 
               font-family: Arial, sans-serif; 
@@ -165,11 +165,11 @@ export function DeliveryPrintDetails({ order, onPrint }) {
             <div>
               <div class="info-row">
                 <span class="info-label">Order ID:</span>
-                <span>#${order.id}</span>
+                <span>#${order.id || order._id}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Order Date:</span>
-                <span>${order.date} ${order.time}</span>
+                <span>${new Date(order.orderedAt).toLocaleDateString()} ${new Date(order.orderedAt).toLocaleTimeString()}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Status:</span>
@@ -198,24 +198,24 @@ export function DeliveryPrintDetails({ order, onPrint }) {
                 <div class="section-title">Customer Information</div>
                 <div class="info-row">
                   <span class="info-label">Name:</span>
-                  <span>${order.customerName}</span>
+                  <span>${order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</span>
                 </div>
                 <div class="info-row">
                   <span class="info-label">Email:</span>
-                  <span>${order.customerEmail}</span>
+                  <span>${order.user?.email || 'N/A'}</span>
                 </div>
                 <div class="info-row">
                   <span class="info-label">Phone:</span>
-                  <span>${order.customerPhone}</span>
+                  <span>${order.user?.phone || 'N/A'}</span>
                 </div>
               </div>
 
               <div class="section">
                 <div class="section-title">Billing Address</div>
-                <div>${order.customerName}</div>
-                <div>${order.billingAddress.street}</div>
-                <div>${order.billingAddress.city}, ${order.billingAddress.state} ${order.billingAddress.zip}</div>
-                <div>${order.billingAddress.country}</div>
+                <div>${order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</div>
+                <div>${order.billingAddress?.street || 'N/A'}</div>
+                <div>${order.billingAddress?.city || 'N/A'}, ${order.billingAddress?.state || 'N/A'} ${order.billingAddress?.zip || 'N/A'}</div>
+                <div>${order.billingAddress?.country || 'N/A'}</div>
               </div>
             </div>
 
@@ -240,11 +240,11 @@ export function DeliveryPrintDetails({ order, onPrint }) {
 
               <div class="section">
                 <div class="section-title">Delivery Address</div>
-                <div>${order.customerName}</div>
-                <div>${order.shippingAddress.street}</div>
-                <div>${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zip}</div>
-                <div>${order.shippingAddress.country}</div>
-                <div style="margin-top: 10px;"><strong>Phone:</strong> ${order.customerPhone}</div>
+                <div>${order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</div>
+                <div>${order.shippingAddress?.street || 'N/A'}</div>
+                <div>${order.shippingAddress?.city || 'N/A'}, ${order.shippingAddress?.state || 'N/A'} ${order.shippingAddress?.zip || 'N/A'}</div>
+                <div>${order.shippingAddress?.country || 'N/A'}</div>
+                <div style="margin-top: 10px;"><strong>Phone:</strong> ${order.user?.phone || 'N/A'}</div>
               </div>
             </div>
           </div>
@@ -262,15 +262,15 @@ export function DeliveryPrintDetails({ order, onPrint }) {
                 </tr>
               </thead>
               <tbody>
-                ${order.items
+                ${(order.items || [])
                   .map(
                     (item) => `
                   <tr>
-                    <td>${item.name}</td>
-                    <td>${item.variant}</td>
-                    <td>${item.quantity}</td>
-                    <td>$${item.price.toFixed(2)}</td>
-                    <td>$${(item.price * item.quantity).toFixed(2)}</td>
+                    <td>${item.name || 'Unknown Item'}</td>
+                    <td>${item.variant || 'N/A'}</td>
+                    <td>${item.quantity || 0}</td>
+                    <td>$${(item.price || 0).toFixed(2)}</td>
+                    <td>$${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</td>
                   </tr>
                 `,
                   )
@@ -282,19 +282,19 @@ export function DeliveryPrintDetails({ order, onPrint }) {
           <div class="total-section">
             <div class="total-row">
               <span>Subtotal:</span>
-              <span>$${order.subtotal.toFixed(2)}</span>
+              <span>$${(order.subtotal || 0).toFixed(2)}</span>
             </div>
             <div class="total-row">
               <span>Shipping:</span>
-              <span>$${order.shipping.toFixed(2)}</span>
+              <span>$${(order.shipping || 0).toFixed(2)}</span>
             </div>
             <div class="total-row">
               <span>Tax:</span>
-              <span>$${order.tax.toFixed(2)}</span>
+              <span>$${(order.tax || 0).toFixed(2)}</span>
             </div>
             <div class="total-row grand-total">
               <span>Grand Total:</span>
-              <span>$${order.total.toFixed(2)}</span>
+              <span>$${(order.total || 0).toFixed(2)}</span>
             </div>
           </div>
 
@@ -360,9 +360,9 @@ export function DeliveryPrintDetails({ order, onPrint }) {
             <div className="flex items-center gap-3">
               <Package className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="font-semibold">Order #{order.id}</p>
+                <p className="font-semibold">Order #{order.id || order._id}</p>
                 <p className="text-sm text-muted-foreground">
-                  {order.date} at {order.time}
+                  {new Date(order.orderedAt).toLocaleDateString()} at {new Date(order.orderedAt).toLocaleTimeString()}
                 </p>
               </div>
             </div>
@@ -371,8 +371,8 @@ export function DeliveryPrintDetails({ order, onPrint }) {
                 {order.status}
               </div>
               <div className="text-sm">
-                <p className="font-medium">${order.total.toFixed(2)}</p>
-                <p className="text-muted-foreground">{order.paymentStatus}</p>
+                <p className="font-medium">${(order.total || 0).toFixed(2)}</p>
+                <p className="text-muted-foreground">{order.paymentStatus || 'Unknown'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -401,7 +401,7 @@ export function DeliveryPrintDetails({ order, onPrint }) {
                 <div className="flex items-center gap-3">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">{order.customerName}</p>
+                    <p className="font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</p>
                     <p className="text-sm text-muted-foreground">Customer Name</p>
                   </div>
                 </div>
@@ -453,7 +453,7 @@ export function DeliveryPrintDetails({ order, onPrint }) {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Total Amount:</span>
-                  <span className="text-lg font-bold">${order.total.toFixed(2)}</span>
+                  <span className="text-lg font-bold">${(order.total || 0).toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -470,12 +470,12 @@ export function DeliveryPrintDetails({ order, onPrint }) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="font-medium">{order.customerName}</p>
-                  <p className="text-sm">{order.shippingAddress.street}</p>
+                  <p className="font-medium">{order.user ? `${order.user.firstName} ${order.user.lastName}` : 'N/A'}</p>
+                  <p className="text-sm">{order.shippingAddress?.street || 'N/A'}</p>
                   <p className="text-sm">
-                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}
+                    {order.shippingAddress?.city || 'N/A'}, {order.shippingAddress?.state || 'N/A'} {order.shippingAddress?.zip || 'N/A'}
                   </p>
-                  <p className="text-sm">{order.shippingAddress.country}</p>
+                  <p className="text-sm">{order.shippingAddress?.country || 'N/A'}</p>
                   <Separator className="my-3" />
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
@@ -530,12 +530,12 @@ export function DeliveryPrintDetails({ order, onPrint }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {order.items.map((item, index) => (
+              {(order.items || []).map((item, index) => (
                 <div key={index} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                   <div className="flex-1">
-                    <p className="font-medium">{item.name}</p>
+                    <p className="font-medium">{item.name || 'Unknown Item'}</p>
                     <p className="text-sm text-muted-foreground">
-                      Variant: {item.variant} • Quantity: {item.quantity}
+                      Variant: {item.variant || 'N/A'} • Quantity: {item.quantity || 0}
                     </p>
                   </div>
                   <div className="text-right">
@@ -551,20 +551,20 @@ export function DeliveryPrintDetails({ order, onPrint }) {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
-                <span>${order.subtotal.toFixed(2)}</span>
+                <span>${(order.subtotal || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping:</span>
-                <span>${order.shipping.toFixed(2)}</span>
+                <span>${(order.shipping || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Tax:</span>
-                <span>${order.tax.toFixed(2)}</span>
+                <span>${(order.tax || 0).toFixed(2)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total:</span>
-                <span>${order.total.toFixed(2)}</span>
+                <span>${(order.total || 0).toFixed(2)}</span>
               </div>
             </div>
           </CardContent>
@@ -585,7 +585,7 @@ export function DeliveryPrintDetails({ order, onPrint }) {
                 <div>
                   <p className="text-sm font-medium">Order Placed</p>
                   <p className="text-xs text-muted-foreground">
-                    {order.date} at {order.time}
+                    {new Date(order.orderedAt).toLocaleDateString()} at {new Date(order.orderedAt).toLocaleTimeString()}
                   </p>
                 </div>
               </div>
