@@ -6,12 +6,14 @@ const {
   getMySurpriseGifts,
   getAllSurpriseGifts,
   updateSurpriseGiftStatus,
-  getSurpriseGiftById
+  getSurpriseGiftById,
+  processPayment
 } = require('../controllers/surpriseGiftController');
 
 // User routes
 router.post('/', isAuthenticated, createSurpriseGift);
 router.get('/my', isAuthenticated, getMySurpriseGifts);
+router.post('/:id/payment', isAuthenticated, processPayment);
 
 // Admin routes
 router.get('/all', isAuthenticated, authorizeRoles('admin', 'inventoryManager'), getAllSurpriseGifts);

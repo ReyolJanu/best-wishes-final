@@ -86,7 +86,7 @@ export default function RootLayout({ children }) {
                 {/* Refresh Button */}
               <button
                 onClick={handleRefresh}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-600 bg-green-200 hover:text-white hover:bg-green-500 rounded-lg transition-colors duration-200 group"
+                className="flex items-center space-x-2 px-3 py-2 text-gray-600 bg-green-200 hover:text-white hover:bg-green-500 rounded-lg transition-colors duration-200 group hover:cursor-pointer"
                 title="Refresh Page"
               >
                 <RefreshCw className="h-5 w-5 group-hover:rotate-180 transition-transform duration-300" />
@@ -102,7 +102,7 @@ export default function RootLayout({ children }) {
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center space-x-2 hover:bg-gray-100 rounded-full p-1 transition-colors">
+                    <button className="flex items-center space-x-2 hover:bg-gray-100 rounded-full p-1 transition-colors hover:cursor-pointer">
                       <Avatar className="h-10 w-10 border-2 border-purple-200">
                         <AvatarImage 
                           src={user?.profileImage || "/placeholder.svg"} 

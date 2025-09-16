@@ -17,6 +17,7 @@ import { clearCart } from '@/app/slices/cartSlice';
 import { clearWishlist } from '@/app/slices/wishlistSlice';
 import { fetchUserProfile } from '../../actions/userActions'; // import at the top
 import Footer from "../../components/footer/page";
+import SurpriseGiftPaymentModal from "../../modal/payment/SurpriseGiftPaymentModal";
 
 export default function ProfilePage() {
   const { user } = useSelector(state => state.userState);
@@ -61,6 +62,11 @@ export default function ProfilePage() {
   // Tab state
   const [activeTab, setActiveTab] = useState('personal');
   const [activeBottomTab, setActiveBottomTab] = useState('orders');
+
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedSurpriseGift, setSelectedSurpriseGift] = useState(null);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -160,6 +166,47 @@ export default function ProfilePage() {
       time: reminder.time || '',
       event: reminder.event || '',
     });
+  };
+
+  const handlePayment = (surpriseGiftId, amount) => {
+    // Find the surprise gift to pass to modal
+    const gift = surpriseGifts.find(g => g._id === surpriseGiftId);
+    if (gift) {
+      setSelectedSurpriseGift(gift);
+      setShowPaymentModal(true);
+    }
+  };
+
+  const processPayment = async (paymentId, paymentMethod) => {
+    try {
+      setPaymentProcessing(true);
+      
+      // Call the payment endpoint
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/surprise/${selectedSurpriseGift._id}/payment`,
+        { 
+          paymentId: paymentId,
+          paymentMethod: paymentMethod 
+        },
+        { withCredentials: true }
+      );
+      
+      if (response.data.success) {
+        toast.success('Payment completed successfully!');
+        // Refresh surprise gifts to update status
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/surprise/my`, { withCredentials: true });
+        setSurpriseGifts(res.data?.data || []);
+        setShowPaymentModal(false);
+        setSelectedSurpriseGift(null);
+      } else {
+        toast.error('Payment failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error(error.response?.data?.message || 'Payment failed. Please try again.');
+    } finally {
+      setPaymentProcessing(false);
+    }
   };
   const closeEditModal = () => {
     setEditReminder(null);
@@ -879,6 +926,8 @@ export default function ProfilePage() {
                                   g.status === 'Delivered' ? 'bg-green-100 text-green-800' :
                                   g.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
                                   g.status === 'OutForDelivery' ? 'bg-blue-100 text-blue-800' :
+                                  g.status === 'Paid' ? 'bg-blue-100 text-blue-800' :
+                                  g.status === 'AwaitingPayment' ? 'bg-orange-100 text-orange-800' :
                                   'bg-yellow-100 text-yellow-800'
                                 }`}>
                                   {g.status}
@@ -908,6 +957,36 @@ export default function ProfilePage() {
                                 <div className="text-sm text-gray-600">Total Amount</div>
                                 <div className="font-semibold text-gray-900">US ${Number(g.total || 0).toFixed(2)}</div>
                               </div>
+                              
+                              {/* Payment Status & Action */}
+                              {g.status === 'AwaitingPayment' && (
+                                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-orange-800">Payment Required</p>
+                                      <p className="text-xs text-orange-600">Complete payment to proceed with delivery</p>
+                                    </div>
+                                    <button
+                                      onClick={() => handlePayment(g._id, g.total)}
+                                      className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                                    >
+                                      Pay Now
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {g.paymentStatus === 'paid' && g.paymentId && (
+                                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-green-800">Payment Completed</p>
+                                      <p className="text-xs text-green-600">Payment ID: {g.paymentId}</p>
+                                    </div>
+                                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">Paid</span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1044,6 +1123,19 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Surprise Gift Payment Modal */}
+      <SurpriseGiftPaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setSelectedSurpriseGift(null);
+        }}
+        surpriseGift={selectedSurpriseGift}
+        onPaymentSuccess={processPayment}
+        isProcessing={paymentProcessing}
+      />
+
     <Footer />
     </>
   );
