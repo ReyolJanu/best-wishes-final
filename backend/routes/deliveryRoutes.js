@@ -6,7 +6,10 @@ const {
   updateDeliveryStaffProfile,
   getDeliveryStats,
   getOrderDetails,
-  searchOrders
+  searchOrders,
+  getAllSurpriseGifts,
+  updateSurpriseGiftStatus,
+  getSurpriseGiftsStats
 } = require('../controllers/deliveryController');
 const { isAuthenticated, authorizeRoles } = require('../middleware/authMiddleware');
 
@@ -21,6 +24,11 @@ router.get('/orders', getAllOrders);
 router.get('/orders/search', searchOrders);
 router.get('/orders/:orderId', getOrderDetails);
 router.put('/orders/:orderId/status', updateOrderStatus);
+
+// Surprise gift management routes
+router.get('/surprise-gifts', getAllSurpriseGifts);
+router.put('/surprise-gifts/:surpriseGiftId/status', updateSurpriseGiftStatus);
+router.get('/surprise-gifts/stats', getSurpriseGiftsStats);
 
 // Profile management routes
 router.get('/profile', getDeliveryStaffProfile);

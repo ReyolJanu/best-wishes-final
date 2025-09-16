@@ -199,16 +199,16 @@ const getNavigationData = (role) => {
               icon: Gift,
               href: "/surpriseGifts",
             },
-            {
-              title: "Track Gift Orders",
-              icon: Eye,
-              href: "/surpriseGifts",
-            },
-            {
-              title: "Delivery Management",
-              icon: UserCheck,
-              href: "/surpriseGifts",
-            }
+            // {
+            //   title: "Track Gift Orders",
+            //   icon: Eye,
+            //   href: "/surpriseGifts",
+            // },
+            // {
+            //   title: "Delivery Management",
+            //   icon: UserCheck,
+            //   href: "/surpriseGifts",
+            // }
           ],
         },
         {

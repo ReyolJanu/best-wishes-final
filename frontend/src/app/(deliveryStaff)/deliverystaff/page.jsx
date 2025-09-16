@@ -8,28 +8,33 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Package, Truck, CheckCircle, AlertCircle, Clock, Eye, MapPin, Phone, Mail, Calendar, BarChart3, Route } from "lucide-react"
+import { Search, Package, Truck, CheckCircle, AlertCircle, Clock, Eye, MapPin, Phone, Mail, Calendar, BarChart3, Route, RefreshCw, Sun, Moon } from "lucide-react"
 import NavigationBar from "./components/navigation-bar"
 import ProductImage from "./components/product-image"
 import DeliveryRoute from "./components/delivery-route"
 import DeliveryAnalytics from "./components/delivery-analytics"
 import { authenticatedFetch, checkAuthentication } from "./utils/auth"
+import { toast, Toaster } from "sonner"
 
 export default function DeliveryDashboard() {
   // State management
   const [activeTab, setActiveTab] = useState("delivery")
   const [orders, setOrders] = useState([])
+  const [surpriseGifts, setSurpriseGifts] = useState([])
   const [complaints, setComplaints] = useState([])
   const [deliveryHistory, setDeliveryHistory] = useState([])
   const [filterStatus, setFilterStatus] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
+  const [orderType, setOrderType] = useState("orders") // "orders" or "surpriseGifts"
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
     inTransitOrders: 0,
     deliveredOrders: 0,
-    cancelledOrders: 0
+    cancelledOrders: 0,
+    totalSurpriseGifts: 0,
+    pendingSurpriseGifts: 0
   })
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
@@ -149,31 +154,51 @@ export default function DeliveryDashboard() {
   const fetchOrders = async (page = 1, status = filterStatus, search = searchQuery) => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({
+      // Fetch regular orders with status "Shipping"
+      const ordersParams = new URLSearchParams({
         page: page.toString(),
         limit: '10',
-        ...(status !== 'all' && { status }),
+        status: 'shipping',
         ...(search && { query: search })
       })
 
-      const response = await authenticatedFetch(`/delivery/orders?${params}`)
+      const ordersResponse = await authenticatedFetch(`/delivery/orders?${ordersParams}`)
+      
+      // Fetch surprise gifts with status "OutForDelivery"
+      const surpriseGiftsParams = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        status: 'OutForDelivery',
+        ...(search && { query: search })
+      })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch orders')
+      const surpriseGiftsResponse = await authenticatedFetch(`/delivery/surprise-gifts?${surpriseGiftsParams}`)
+
+      let ordersData = { orders: [], pagination: {} }
+      let surpriseGiftsData = { surpriseGifts: [], pagination: {} }
+
+      if (ordersResponse.ok) {
+        ordersData = await ordersResponse.json()
       }
 
-      const data = await response.json()
-      if (data.success) {
-        // Ensure orders is an array and has the expected structure
-        const orders = Array.isArray(data.orders) ? data.orders : []
-        setOrders(orders)
-        setCurrentPage(data.pagination?.currentPage || 1)
-        setTotalPages(data.pagination?.totalPages || 1)
+      if (surpriseGiftsResponse.ok) {
+        surpriseGiftsData = await surpriseGiftsResponse.json()
       }
+
+      // Set data for both collections
+      const orders = Array.isArray(ordersData.orders) ? ordersData.orders : []
+      const surpriseGifts = Array.isArray(surpriseGiftsData.surpriseGifts) ? surpriseGiftsData.surpriseGifts : []
+      
+      setOrders(orders)
+      setSurpriseGifts(surpriseGifts)
+      setCurrentPage(ordersData.pagination?.currentPage || 1)
+      setTotalPages(Math.max(ordersData.pagination?.totalPages || 1, surpriseGiftsData.pagination?.totalPages || 1))
+
     } catch (error) {
-      console.error("Error fetching orders:", error)
-      // Set empty array instead of mock data to avoid structure mismatch
+      console.error("Error fetching data:", error)
+      // Set empty arrays on error
       setOrders([])
+      setSurpriseGifts([])
     } finally {
       setLoading(false)
     }
@@ -181,14 +206,38 @@ export default function DeliveryDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await authenticatedFetch('/delivery/stats')
+      // Fetch stats for both orders and surprise gifts
+      const [ordersStatsResponse, surpriseGiftsStatsResponse] = await Promise.all([
+        authenticatedFetch('/delivery/stats'),
+        authenticatedFetch('/delivery/surprise-gifts/stats')
+      ])
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.stats) {
-          setStats(data.stats)
+      let combinedStats = {
+        totalOrders: 0,
+        pendingOrders: 0,
+        inTransitOrders: 0,
+        deliveredOrders: 0,
+        cancelledOrders: 0,
+        totalSurpriseGifts: 0,
+        pendingSurpriseGifts: 0
+      }
+
+      if (ordersStatsResponse.ok) {
+        const ordersData = await ordersStatsResponse.json()
+        if (ordersData.success && ordersData.stats) {
+          combinedStats = { ...combinedStats, ...ordersData.stats }
         }
       }
+
+      if (surpriseGiftsStatsResponse.ok) {
+        const surpriseGiftsData = await surpriseGiftsStatsResponse.json()
+        if (surpriseGiftsData.success && surpriseGiftsData.stats) {
+          combinedStats.totalSurpriseGifts = surpriseGiftsData.stats.total || 0
+          combinedStats.pendingSurpriseGifts = surpriseGiftsData.stats.pending || 0
+        }
+      }
+
+      setStats(combinedStats)
     } catch (error) {
       console.error("Error fetching stats:", error)
     }
@@ -220,35 +269,69 @@ export default function DeliveryDashboard() {
     }
   }
 
-  const updateOrderStatus = async (orderId, newStatus, notes = '') => {
+  const updateOrderStatus = async (orderId, newStatus, notes = '', endpoint = null, itemType = 'orders', currentStatus = 'Shipping') => {
     setStatusUpdateLoading(true)
     try {
-      const response = await authenticatedFetch(`/delivery/orders/${orderId}/status`, {
+      // Use provided endpoint or default to orders endpoint
+      const apiEndpoint = endpoint || `/delivery/orders/${orderId}/status`
+      
+      const response = await authenticatedFetch(apiEndpoint, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus, notes })
+        body: JSON.stringify({ status: newStatus, notes, currentStatus })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update order status')
+        throw new Error(`Failed to update ${itemType} status`)
       }
 
       const data = await response.json()
       if (data.success) {
-        // Refresh orders list
+        // Remove the updated item from the appropriate list
+        if (itemType === 'orders') {
+          setOrders(prev => prev.filter(order => order._id !== orderId && order.id !== orderId))
+        } else if (itemType === 'surpriseGifts') {
+          setSurpriseGifts(prev => prev.filter(gift => gift._id !== orderId && gift.id !== orderId))
+        }
+        
+        // Refresh data and stats
         await fetchOrders(currentPage, filterStatus, searchQuery)
         await fetchStats()
-        alert('Order status updated successfully!')
+        
+        // Show success notification
+        toast.success(`✅ ${itemType === 'orders' ? 'Order' : 'Surprise Gift'} marked as Delivered successfully!`, {
+          description: `${itemType === 'orders' ? 'Order' : 'Surprise Gift'} #${orderId} has been delivered and removed from your list.`,
+          duration: 5000,
+        })
       }
     } catch (error) {
-      console.error("Error updating order status:", error)
-      alert('Failed to update order status')
+      console.error(`Error updating ${itemType} status:`, error)
+      toast.error(`Failed to update ${itemType} status`, {
+        description: 'Please try again or contact support if the issue persists.',
+        duration: 5000,
+      })
     } finally {
       setStatusUpdateLoading(false)
     }
   }
 
-  const handleSubmit = async (orderId) => {
-    await updateOrderStatus(orderId, 'Delivered')
+  const handleSubmit = async (orderId, itemType = orderType) => {
+    try {
+      let endpoint
+      let currentStatus
+      let newStatus = 'Delivered'
+
+      if (itemType === 'orders') {
+        endpoint = `/delivery/orders/${orderId}/status`
+        currentStatus = 'Shipping'
+      } else if (itemType === 'surpriseGifts') {
+        endpoint = `/delivery/surprise-gifts/${orderId}/status`
+        currentStatus = 'OutForDelivery'
+      }
+
+      await updateOrderStatus(orderId, newStatus, '', endpoint, itemType, currentStatus)
+    } catch (error) {
+      console.error("Error in handleSubmit:", error)
+    }
   }
 
   const resolveComplaint = async (complaintId) => {
@@ -318,6 +401,8 @@ export default function DeliveryDashboard() {
   }, [])
 
   // Order Details Modal Component
+
+  // Order Details Modal Component
   const OrderDetailsModal = ({ order, isOpen, onClose }) => {
     const [statusNotes, setStatusNotes] = useState('')
     const [selectedStatus, setSelectedStatus] = useState(order?.status || '')
@@ -326,24 +411,24 @@ export default function DeliveryDashboard() {
 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-3 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Package className="w-5 h-5" />
+            <DialogTitle className="flex items-center space-x-2 text-base sm:text-lg">
+              <Package className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Order Details - #{order._id || order.id}</span>
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Order Status */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg space-y-3 sm:space-y-0">
               <div>
-                <h3 className="font-semibold text-gray-900">Current Status</h3>
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Current Status</h3>
                 <Badge className={getStatusBadgeColor(order.status)}>{order.status}</Badge>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full sm:w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -358,6 +443,7 @@ export default function DeliveryDashboard() {
                   onClick={() => updateOrderStatus(order._id || order.id, selectedStatus, statusNotes)}
                   disabled={statusUpdateLoading || selectedStatus === order.status}
                   size="sm"
+                  className="w-full sm:w-auto"
                 >
                   Update
                 </Button>
@@ -367,28 +453,28 @@ export default function DeliveryDashboard() {
             {/* Customer Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Mail className="w-4 h-4" />
+                <CardTitle className="flex items-center space-x-2 text-sm sm:text-base">
+                  <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span>Customer Information</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Name</label>
-                    <p className="text-gray-900">{order.user?.firstName} {order.user?.lastName}</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Name</label>
+                    <p className="text-sm sm:text-base text-gray-900">{order.user?.firstName} {order.user?.lastName}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-gray-900">{order.user?.email}</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Email</label>
+                    <p className="text-sm sm:text-base text-gray-900 break-all">{order.user?.email}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Phone</label>
-                    <p className="text-gray-900">{order.user?.phone}</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Phone</label>
+                    <p className="text-sm sm:text-base text-gray-900">{order.user?.phone}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Address</label>
-                    <p className="text-gray-900">{order.user?.address}</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Address</label>
+                    <p className="text-sm sm:text-base text-gray-900">{order.user?.address}</p>
                   </div>
                 </div>
               </CardContent>
@@ -397,34 +483,39 @@ export default function DeliveryDashboard() {
             {/* Order Items */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Package className="w-4 h-4" />
+                <CardTitle className="flex items-center space-x-2 text-sm sm:text-base">
+                  <Package className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span>Order Items</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {order.items?.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-4 p-3 border rounded-lg">
-                      <ProductImage
-                        src={item.product?.images?.[0] || item.image || ""}
-                        alt={item.product?.name || item.name}
-                        productName={item.product?.name || item.name}
-                        width={60}
-                        height={60}
-                      />
-                      <div className="flex-1">
-                        <h4 className="font-medium">{item.product?.name || item.name}</h4>
-                        <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                        <p className="text-sm text-gray-600">Price: ${item.price || item.product?.salePrice}</p>
+                <div className="space-y-3 sm:space-y-4">
+                  {order.items?.map((item, index) => {
+                    const productImage = item.image || item.product?.images?.[0] || "/images/placeholder.png";
+                    
+                    return (
+                      <div key={index} className="flex items-center space-x-3 sm:space-x-4 p-3 border rounded-lg">
+                        <ProductImage
+                          src={productImage}
+                          alt={item.product?.name || item.name}
+                          productName={item.product?.name || item.name}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 sm:w-16 sm:h-16"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm sm:text-base truncate">{item.product?.name || item.name}</h4>
+                          <p className="text-xs sm:text-sm text-gray-600">Quantity: {item.quantity}</p>
+                          <p className="text-xs sm:text-sm text-gray-600">Price: ${item.price || item.product?.salePrice}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold">Total Amount:</span>
-                    <span className="text-lg font-bold text-purple-600">${order.total}</span>
+                    <span className="text-base sm:text-lg font-semibold">Total Amount:</span>
+                    <span className="text-base sm:text-lg font-bold text-purple-600">${order.total}</span>
                   </div>
                 </div>
               </CardContent>
@@ -432,7 +523,7 @@ export default function DeliveryDashboard() {
 
             {/* Status Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                 Status Update Notes
               </label>
               <Textarea
@@ -440,6 +531,7 @@ export default function DeliveryDashboard() {
                 onChange={(e) => setStatusNotes(e.target.value)}
                 placeholder="Add notes about the status update..."
                 rows={3}
+                className="text-sm"
               />
             </div>
 
@@ -447,8 +539,8 @@ export default function DeliveryDashboard() {
             {order.statusHistory && order.statusHistory.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4" />
+                  <CardTitle className="flex items-center space-x-2 text-sm sm:text-base">
+                    <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span>Status History</span>
                   </CardTitle>
                 </CardHeader>
@@ -457,15 +549,15 @@ export default function DeliveryDashboard() {
                     {order.statusHistory.map((history, index) => (
                       <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                         <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                             <Badge className={getStatusBadgeColor(history.status)}>{history.status}</Badge>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-xs sm:text-sm text-gray-500">
                               {new Date(history.updatedAt).toLocaleString()}
                             </span>
                           </div>
                           {history.notes && (
-                            <p className="text-sm text-gray-600 mt-1">{history.notes}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 mt-1">{history.notes}</p>
                           )}
                         </div>
                       </div>
@@ -513,62 +605,74 @@ export default function DeliveryDashboard() {
         return (
           <div className="space-y-6">
             {/* Dashboard Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Package className="w-8 h-8 text-blue-600" />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
+                    <Package className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mb-1 sm:mb-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-600">Total Orders</p>
+                      <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-8 h-8 text-yellow-600" />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
+                    <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 mb-1 sm:mb-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Pending</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.pendingOrders}</p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
+                      <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.pendingOrders}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Truck className="w-8 h-8 text-blue-600" />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
+                    <Truck className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mb-1 sm:mb-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-600">In Transit</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.inTransitOrders}</p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-600">In Transit</p>
+                      <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.inTransitOrders}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-8 h-8 text-green-600" />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
+                    <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mb-1 sm:mb-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Delivered</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.deliveredOrders}</p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-600">Delivered</p>
+                      <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.deliveredOrders}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
+                    <Package className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 mb-1 sm:mb-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Cancelled</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.cancelledOrders}</p>
+                      <p className="text-xs sm:text-sm font-medium text-gray-600">Surprise Gifts</p>
+                      <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalSurpriseGifts}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
+                    <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 mb-1 sm:mb-0" />
+                    <div>
+                      <p className="text-xs sm:text-sm font-medium text-gray-600">Cancelled</p>
+                      <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.cancelledOrders}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -576,13 +680,35 @@ export default function DeliveryDashboard() {
             </div>
 
             {/* Orders Management */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-6">
               {/* Filters and Search */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-                <h2 className="text-xl font-semibold text-gray-900">Order Management</h2>
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+              <div className="flex flex-col space-y-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Order Management</h2>
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={() => setOrderType("orders")}
+                      variant={orderType === "orders" ? "default" : "outline"}
+                      size="sm"
+                      className="flex items-center space-x-1"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Regular Orders ({orders.length})</span>
+                    </Button>
+                    <Button 
+                      onClick={() => setOrderType("surpriseGifts")}
+                      variant={orderType === "surpriseGifts" ? "default" : "outline"}
+                      size="sm"
+                      className="flex items-center space-x-1"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Surprise Gifts ({surpriseGifts.length})</span>
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4">
                   <Select value={filterStatus} onValueChange={handleFilterChange}>
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-full sm:w-48 md:w-52">
                       <SelectValue placeholder="Filter" />
                     </SelectTrigger>
                     <SelectContent>
@@ -594,25 +720,39 @@ export default function DeliveryDashboard() {
                       <SelectItem value="Cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex space-x-2">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 text-[#822BE2]" />
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#822BE2]" />
                       <Input
                         placeholder="Search orders..."
                         value={searchQuery}
                         onChange={handleSearchChange}
-                        className="pl-10 w-full sm:w-64 border focus-visible:ring-0 focus-visible:border-[#822BE2] focus:outline-none"
+                        className="pl-10 w-full sm:w-64 md:w-72 border focus-visible:ring-0 focus-visible:border-[#822BE2] focus:outline-none"
                       />
                     </div>
-                    <Button onClick={handleSearchSubmit} variant="outline">
+                    <Button onClick={handleSearchSubmit} variant="outline" className="w-full sm:w-auto">
                       Search
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        fetchOrders(currentPage)
+                        toast.success('Data refreshed successfully!', {
+                          description: 'Latest orders and surprise gifts have been fetched.',
+                          duration: 3000,
+                        })
+                      }} 
+                      variant="outline" 
+                      className="w-full sm:w-auto flex items-center space-x-1"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Refresh</span>
                     </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Orders Table */}
-              <div className="overflow-x-auto">
+              {/* Orders Table - Desktop */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -648,14 +788,14 @@ export default function DeliveryDashboard() {
                           </div>
                         </td>
                       </tr>
-                    ) : orders.length === 0 ? (
+                    ) : (orderType === "orders" ? orders : surpriseGifts).length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                          No orders found
+                          No {orderType === "orders" ? "regular orders" : "surprise gifts"} found
                         </td>
                       </tr>
                     ) : (
-                      orders.map((order) => (
+                      (orderType === "orders" ? orders : surpriseGifts).map((order) => (
                         <tr key={order._id || order.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             #{order._id?.slice(-8) || order.id || 'N/A'}
@@ -663,10 +803,10 @@ export default function DeliveryDashboard() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {order.user?.firstName || 'N/A'} {order.user?.lastName || 'N/A'}
+                                {order.user?.firstName || order.recipient?.name || 'N/A'} {order.user?.lastName || ''}
                               </div>
-                              <div className="text-sm text-gray-500">{order.user?.email || 'N/A'}</div>
-                              <div className="text-sm text-gray-500">{order.user?.phone || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">{order.user?.email || order.recipient?.email || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">{order.user?.phone || order.recipient?.phone || 'N/A'}</div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -674,7 +814,7 @@ export default function DeliveryDashboard() {
                               {order.items && order.items.length > 0 ? (
                                 <>
                                   <ProductImage
-                                    src={order.items[0].product?.images?.[0] || order.items[0].image || ""}
+                                    src={order.items[0].product?.images?.[0] || order.items[0].image || "/images/placeholder.png"}
                                     alt={order.items[0].product?.name || order.items[0].name}
                                     productName={order.items[0].product?.name || order.items[0].name}
                                     width={40}
@@ -708,29 +848,31 @@ export default function DeliveryDashboard() {
                               'N/A'
                             }
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <Button
-                              onClick={() => {
-                                setSelectedOrder(order)
-                                setShowOrderDetails(true)
-                              }}
-                              size="sm"
-                              variant="outline"
-                              className="flex items-center space-x-1"
-                            >
-                              <Eye className="w-3 h-3" />
-                              <span>View</span>
-                            </Button>
-                            {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                               <Button
-                                onClick={() => handleSubmit(order._id || order.id)}
-                                disabled={statusUpdateLoading}
+                                onClick={() => {
+                                  setSelectedOrder(order)
+                                  setShowOrderDetails(true)
+                                }}
                                 size="sm"
-                                className="rounded-[8px] bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                                variant="outline"
+                                className="flex items-center space-x-1 w-full sm:w-auto"
                               >
-                                {statusUpdateLoading ? 'Updating...' : 'Mark Delivered'}
+                                <Eye className="w-3 h-3" />
+                                <span>View</span>
                               </Button>
-                            )}
+                              {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                                <Button
+                                  onClick={() => handleSubmit(order._id || order.id, orderType)}
+                                  disabled={statusUpdateLoading}
+                                  size="sm"
+                                  className="rounded-[8px] bg-purple-600 hover:bg-purple-700 text-white font-medium w-full sm:w-auto"
+                                >
+                                  {statusUpdateLoading ? 'Updating...' : 'Mark Delivered'}
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -739,18 +881,124 @@ export default function DeliveryDashboard() {
                 </table>
               </div>
 
+              {/* Orders Cards - Mobile */}
+              <div className="md:hidden space-y-4">
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  </div>
+                ) : (orderType === "orders" ? orders : surpriseGifts).length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No {orderType === "orders" ? "regular orders" : "surprise gifts"} found
+                  </div>
+                ) : (
+                  (orderType === "orders" ? orders : surpriseGifts).map((order) => (
+                    <Card key={order._id || order.id} className="border border-gray-200">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          {/* Order Header */}
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-medium text-gray-900">
+                                #{order._id?.slice(-8) || order.id || 'N/A'}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {order.orderedAt || order.createdAt ? 
+                                  new Date(order.orderedAt || order.createdAt).toLocaleDateString() : 
+                                  'N/A'
+                                }
+                              </p>
+                            </div>
+                            <Badge className={getStatusBadgeColor(order.status)}>{order.status || 'Unknown'}</Badge>
+                          </div>
+
+                          {/* Customer Info */}
+                          <div className="border-t pt-3">
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Customer</h4>
+                            <p className="text-sm text-gray-900">
+                              {order.user?.firstName || order.recipient?.name || 'N/A'} {order.user?.lastName || ''}
+                            </p>
+                            <p className="text-sm text-gray-500">{order.user?.email || order.recipient?.email || 'N/A'}</p>
+                            <p className="text-sm text-gray-500">{order.user?.phone || order.recipient?.phone || 'N/A'}</p>
+                          </div>
+
+                          {/* Product Info */}
+                          <div className="border-t pt-3">
+                            <div className="flex items-center space-x-3">
+                              {order.items && order.items.length > 0 ? (
+                                <>
+                                  <ProductImage
+                                    src={order.items[0].product?.images?.[0] || order.items[0].image || "/images/placeholder.png"}
+                                    alt={order.items[0].product?.name || order.items[0].name}
+                                    productName={order.items[0].product?.name || order.items[0].name}
+                                    width={48}
+                                    height={48}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {order.items[0].product?.name || order.items[0].name || 'Unknown Product'}
+                                    </div>
+                                    {order.items.length > 1 && (
+                                      <div className="text-sm text-gray-500">
+                                        +{order.items.length - 1} more items
+                                      </div>
+                                    )}
+                                    <div className="text-sm font-medium text-purple-600">
+                                      ${order.total?.toFixed(2) || order.amount?.toFixed(2) || '0.00'}
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-sm text-gray-500">No items</div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="border-t pt-3 flex space-x-2">
+                            <Button
+                              onClick={() => {
+                                setSelectedOrder(order)
+                                setShowOrderDetails(true)
+                              }}
+                              size="sm"
+                              variant="outline"
+                              className="flex items-center space-x-1 flex-1"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>View Details</span>
+                            </Button>
+                            {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                              <Button
+                                onClick={() => handleSubmit(order._id || order.id, orderType)}
+                                disabled={statusUpdateLoading}
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-medium flex-1"
+                              >
+                                {statusUpdateLoading ? 'Updating...' : 'Mark Delivered'}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6">
-                  <div className="text-sm text-gray-700">
+                <div className="flex flex-col sm:flex-row items-center justify-between mt-6 space-y-3 sm:space-y-0">
+                  <div className="text-sm text-gray-700 order-2 sm:order-1">
                     Page {currentPage} of {totalPages}
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 order-1 sm:order-2">
                     <Button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
                       variant="outline"
                       size="sm"
+                      className="px-3 py-1"
                     >
                       Previous
                     </Button>
@@ -759,6 +1007,7 @@ export default function DeliveryDashboard() {
                       disabled={currentPage === totalPages}
                       variant="outline"
                       size="sm"
+                      className="px-3 py-1"
                     >
                       Next
                     </Button>
@@ -770,9 +1019,11 @@ export default function DeliveryDashboard() {
         )
       case "complains":
         return (
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Complaints Management</h2>
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6">Complaints Management</h2>
+            
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -819,13 +1070,48 @@ export default function DeliveryDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-4">
+              {complaints.map((complaint) => (
+                <Card key={complaint.id} className="border border-gray-200">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-medium text-gray-900">{complaint.productName}</h3>
+                        <Badge className={getStatusBadgeColor(complaint.status)}>{complaint.status}</Badge>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-1">Issue</h4>
+                        <p className="text-sm text-gray-600">{complaint.issue}</p>
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="text-xs text-gray-500">{complaint.submittedDate}</span>
+                        <Button
+                          onClick={() => resolveComplaint(complaint.id)}
+                          disabled={complaint.status === "Resolved"}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Resolve
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )
       case "history":
         return (
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">History List</h2>
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6">History List</h2>
+            
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -855,6 +1141,26 @@ export default function DeliveryDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-4">
+              {deliveryHistory.map((item) => (
+                <Card key={item.id} className="border border-gray-200">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-medium text-gray-900">{item.productName}</h3>
+                        <Badge className={getStatusBadgeColor(item.status)}>{item.status}</Badge>
+                      </div>
+                      
+                      <div className="text-sm text-gray-500">
+                        Delivered: {item.deliveryDate}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )
       case "route":
@@ -876,10 +1182,13 @@ export default function DeliveryDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <NavigationBar activeTab={activeTab} onTabChange={handleTabChange} />
+      <NavigationBar 
+        activeTab={activeTab} 
+        onTabChange={handleTabChange} 
+      />
 
       {/* Main Content with proper spacing */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{renderContent()}</main>
+      <main className="w-full px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-8">{renderContent()}</main>
 
       {/* Order Details Modal */}
       <OrderDetailsModal 
@@ -889,6 +1198,13 @@ export default function DeliveryDashboard() {
           setShowOrderDetails(false)
           setSelectedOrder(null)
         }} 
+      />
+      
+      {/* Toast Notifications */}
+      <Toaster 
+        position="top-right"
+        theme={"light"}
+        richColors 
       />
     </div>
   )

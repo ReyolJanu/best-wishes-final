@@ -48,7 +48,7 @@ export default function DeliveryRoute({ orders = [] }) {
   }, [orders])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2 md:px-0">
       {/* Route Summary */}
       <Card>
         <CardHeader>
@@ -58,30 +58,29 @@ export default function DeliveryRoute({ orders = [] }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <Package className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg flex flex-col items-center justify-center">
+              <Package className="w-6 h-6 text-blue-600 mb-2" />
               <div className="text-2xl font-bold text-blue-600">{route.length}</div>
               <div className="text-sm text-gray-600">Deliveries</div>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <Navigation className="w-6 h-6 text-green-600 mx-auto mb-2" />
+            <div className="text-center p-3 bg-green-50 rounded-lg flex flex-col items-center justify-center">
+              <Navigation className="w-6 h-6 text-green-600 mb-2" />
               <div className="text-2xl font-bold text-green-600">{totalDistance.toFixed(1)} km</div>
               <div className="text-sm text-gray-600">Total Distance</div>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <Clock className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+            <div className="text-center p-3 bg-purple-50 rounded-lg flex flex-col items-center justify-center">
+              <Clock className="w-6 h-6 text-purple-600 mb-2" />
               <div className="text-2xl font-bold text-purple-600">{estimatedTime} min</div>
               <div className="text-sm text-gray-600">Est. Time</div>
             </div>
           </div>
-          
-          <div className="flex space-x-2">
-            <Button onClick={optimizeRoute} variant="outline" className="flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={optimizeRoute} variant="outline" className="flex items-center space-x-2 w-full sm:w-auto">
               <Navigation className="w-4 h-4" />
               <span>Re-optimize Route</span>
             </Button>
-            <Button onClick={startRoute} className="flex items-center space-x-2">
+            <Button onClick={startRoute} className="flex items-center space-x-2 w-full sm:w-auto">
               <Truck className="w-4 h-4" />
               <span>Start Route</span>
             </Button>
@@ -106,15 +105,14 @@ export default function DeliveryRoute({ orders = [] }) {
           ) : (
             <div className="space-y-3">
               {route.map((order, index) => (
-                <div key={order._id || order.id} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex-shrink-0">
+                <div key={order._id || order.id} className="flex flex-col sm:flex-row items-center sm:items-start space-y-2 sm:space-y-0 sm:space-x-4 p-4 border rounded-lg hover:bg-gray-50">
+                  <div className="flex-shrink-0 mb-2 sm:mb-0">
                     <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
                       {index + 1}
                     </div>
                   </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
+                  <div className="flex-1 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full">
                       <div>
                         <h4 className="font-medium text-gray-900">
                           Order #{order._id?.slice(-8) || order.id}
@@ -124,7 +122,7 @@ export default function DeliveryRoute({ orders = [] }) {
                         </p>
                         <p className="text-sm text-gray-500">{order.user?.address}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right mt-2 sm:mt-0">
                         <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                           {order.status}
                         </Badge>
@@ -134,12 +132,11 @@ export default function DeliveryRoute({ orders = [] }) {
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 mt-2 sm:mt-0">
                     <Button
                       onClick={() => completeDelivery(order._id || order.id)}
                       size="sm"
-                      className="flex items-center space-x-1"
+                      className="flex items-center space-x-1 w-full sm:w-auto"
                     >
                       <CheckCircle className="w-4 h-4" />
                       <span>Complete</span>

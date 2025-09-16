@@ -71,9 +71,9 @@ export default function DeliveryAnalytics({ stats, orders = [] }) {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2 md:px-0">
       {/* Time Range Selector */}
-      <div className="flex justify-between items-center">
+  <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
         <h3 className="text-lg font-semibold text-gray-900">Performance Analytics</h3>
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-32">
@@ -89,7 +89,7 @@ export default function DeliveryAnalytics({ stats, orders = [] }) {
       </div>
 
       {/* Performance Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {performanceMetrics.map((metric, index) => {
           const Icon = metric.icon
           const TrendIcon = metric.trend === "up" ? TrendingUp : TrendingDown
@@ -118,7 +118,7 @@ export default function DeliveryAnalytics({ stats, orders = [] }) {
       </div>
 
       {/* Recent Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Delivery Status Distribution */}
         <Card>
           <CardHeader>
