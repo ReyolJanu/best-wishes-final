@@ -6,8 +6,7 @@ import Image from 'next/image';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useElements, useStripe } from '@stripe/react-stripe-js'
-
+import { Elements, CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -18,7 +17,7 @@ function PaymentForm({ clientSecret, amount, currency, collaborativePurchase, pa
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!stripe || !elements || isLoading) return;
+    if (!stripe || !elements) return;
     
     setIsLoading(true);
     try {
@@ -33,15 +32,13 @@ function PaymentForm({ clientSecret, amount, currency, collaborativePurchase, pa
       });
 
       if (result.error) {
-        console.error('Stripe payment error:', result.error);
         toast.error(result.error.message || "Payment failed");
       } else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
-        console.log('Stripe payment succeeded:', result.paymentIntent.id);
-        await onPaymentSuccess(result.paymentIntent.id);
+        toast.success("Payment successful!");
+        onPaymentSuccess(result.paymentIntent.id);
       }
     } catch (err) {
-      console.error('Payment processing error:', err);
-      toast.error("Payment processing failed");
+      toast.error("Payment error");
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +100,7 @@ export default function CollaborativePaymentPage() {
 
   useEffect(() => {
     const createPaymentIntent = async () => {
-      if (!collaborativePurchase || !participant || clientSecret) return; // Don't recreate if already exists
+      if (!collaborativePurchase || !participant) return;
       try {
         const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/payments/create-intent`, {
           amount: Math.round(collaborativePurchase.shareAmount * 100),
@@ -121,31 +118,22 @@ export default function CollaborativePaymentPage() {
       }
     };
     createPaymentIntent();
-  }, [collaborativePurchase, participant, paymentLink, clientSecret]);
+  }, [collaborativePurchase, participant, paymentLink]);
 
   const handlePaymentSuccess = async (paymentIntentId) => {
     try {
-      console.log('Processing payment success with ID:', paymentIntentId);
-      console.log('Participant email:', participant.email);
-      console.log('Payment link:', paymentLink);
-      
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/payment/${paymentLink}`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/payment/${paymentLink}`, {
         paymentIntentId,
         email: participant.email
       });
-      
-      console.log('Payment success response:', response.data);
       
       // Refresh the collaborative purchase data
       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/payment/${paymentLink}`);
       setCollaborativePurchase(res.data.collaborativePurchase);
       setParticipant(res.data.participant);
-      
-      toast.success("Payment completed successfully!");
     } catch (err) {
-      console.error('Payment completion error:', err);
-      console.error('Error response:', err.response?.data);
-      toast.error(err.response?.data?.message || "Failed to process payment");
+      console.error(err);
+      toast.error("Failed to process payment");
     }
   };
 
@@ -221,6 +209,7 @@ export default function CollaborativePaymentPage() {
       <header className="w-full bg-white shadow-sm py-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Best Wishes Logo" className="h-8 w-auto rounded-full" />
+          <span className="text-xl font-bold text-purple-700">Best Wishes</span>
         </div>
         <span className="text-gray-500 text-sm">Collaborative Purchase</span>
       </header>
@@ -328,7 +317,7 @@ export default function CollaborativePaymentPage() {
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Payment Details</h3>
               {clientSecret && (
-                <Elements key={clientSecret} options={{ clientSecret }} stripe={stripePromise}>
+                <Elements options={{ clientSecret }} stripe={stripePromise}>
                   <PaymentForm 
                     clientSecret={clientSecret} 
                     amount={collaborativePurchase.shareAmount} 

@@ -49,7 +49,7 @@ function Page() {
       else if (userData.role === 'admin') {
         router.push('/admin');
       } else if (userData.role === 'inventoryManager') {
-        router.push('/inventorymanager');
+        router.push('/inventory/dashboard');
       } else if (userData.role === 'deliveryStaff') {
         router.push('/deliverystaff');
       } else {
