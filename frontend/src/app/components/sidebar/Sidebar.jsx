@@ -107,6 +107,17 @@ const getNavigationData = (role) => {
           ],
         },
         {
+          title: "Roles Management",
+          icon: UserCheck,
+          items: [
+            {
+              title: "Staff Management",
+              icon: UserCheck,
+              href: "/roles-management",
+            },
+          ],
+        },
+        {
           title: "Products Management",
           icon: Package,
           items: [
@@ -227,39 +238,9 @@ const getNavigationData = (role) => {
           icon: FileText,
           items: [
             {
-              title: "Sales Reports - Daily",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/daily",
-            },
-            {
-              title: "Sales Reports - Weekly",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/weekly",
-            },
-            {
-              title: "Sales Reports - Monthly",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/monthly",
-            },
-            {
-              title: "Sales Reports - Yearly",
-              icon: TrendingUp,
-              href: "/admin/reports/sales/yearly",
-            },
-            {
-              title: "Custom Date Filter",
-              icon: Calendar,
-              href: "/admin/reports/sales/custom",
-            },
-            {
-              title: "Profit/Loss Breakdown",
-              icon: Calculator,
-              href: "/admin/reports/sales/breakdown",
-            },
-            {
-              title: "Category-Wise Revenue",
-              icon: DollarSign,
-              href: "/admin/reports/revenue/category",
+              title: "Reports Dashboard",
+              icon: BarChart3,
+              href: "/reports",
             },
           ],
         },
@@ -572,25 +553,27 @@ export default function DashboardSidebar({ role = "admin", title = "Best Wishes"
           `}
         >
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-black">
-                {role === "admin" ? (
-                  <BarChart3 className="h-5 w-5 text-white" />
-                ) : role === "user" ? (
-                  <User className="h-5 w-5 text-white" />
-                ) : (
-                  <ShoppingBag className="h-5 w-5 text-white" />
-                )}
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
-                  {title}
-                </h1>
-                <p className="text-xs text-gray-500">{defaultSubtitle}</p>
+          {title && (
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-black">
+                  {role === "admin" ? (
+                    <BarChart3 className="h-5 w-5 text-white" />
+                  ) : role === "user" ? (
+                    <User className="h-5 w-5 text-white" />
+                  ) : (
+                    <ShoppingBag className="h-5 w-5 text-white" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
+                    {title}
+                  </h1>
+                  <p className="text-xs text-gray-500">{defaultSubtitle}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Scrollable Navigation */}
           <div className="flex-1 overflow-y-auto">

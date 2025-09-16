@@ -78,26 +78,162 @@ export default function Dashboard() {
     return () => window.removeEventListener("resize", checkIfMobile)
   }, [])
 
+  // State for real data
+  const [realSalesData, setRealSalesData] = useState([]);
+  const [realOrdersData, setRealOrdersData] = useState([]);
+  const [realProductsData, setRealProductsData] = useState([]);
+  const [realUsersData, setRealUsersData] = useState([]);
+  const [salesMetrics, setSalesMetrics] = useState({
+    totalSales: 0,
+    giftOrders: 0,
+    activeRentals: 0,
+    decorationJobs: 0,
+    totalProducts: 0,
+    totalUsers: 0
+  });
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       await withLoading(async () => {
         try {
-          // Use existing admin users endpoint for dashboard data
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, { 
-            credentials: 'include' 
+          // Fetch real data from multiple endpoints
+          const [usersResponse, ordersResponse, productsResponse] = await Promise.all([
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, { credentials: 'include' }),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/all`, { credentials: 'include' }),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/products`, { credentials: 'include' })
+          ]);
+
+          const [usersData, ordersData, productsData] = await Promise.all([
+            usersResponse.json(),
+            ordersResponse.json(),
+            productsResponse.json()
+          ]);
+
+          // Set real data
+          setRealUsersData(usersData.users || []);
+          setRealOrdersData(ordersData.orders || []);
+          setRealProductsData(productsData.data || []);
+
+          // Calculate real metrics
+          const orders = ordersData.orders || [];
+          const products = productsData.data || [];
+          const users = usersData.users || [];
+
+          // Calculate total sales from orders
+          const totalSales = orders.reduce((sum, order) => {
+            return sum + (order.totalAmount || 0);
+          }, 0);
+
+          // Count orders by status/type
+          const completedOrders = orders.filter(order => order.status === 'Delivered').length;
+          const processingOrders = orders.filter(order => ['Processing', 'Packing', 'Shipped'].includes(order.status)).length;
+          const pendingOrders = orders.filter(order => order.status === 'Pending').length;
+
+          // Calculate category-based metrics from products and orders
+          const giftOrders = orders.filter(order => 
+            order.items?.some(item => 
+              item.product?.mainCategory === 'gifts' || 
+              item.product?.category?.includes('gift') ||
+              item.product?.name?.toLowerCase().includes('gift')
+            )
+          ).length;
+
+          const activeRentals = orders.filter(order => 
+            order.status === 'Processing' && 
+            order.items?.some(item => 
+              item.product?.mainCategory === 'rentals' || 
+              item.product?.category?.includes('rental') ||
+              item.product?.name?.toLowerCase().includes('rental')
+            )
+          ).length;
+
+          const decorationJobs = orders.filter(order => 
+            order.items?.some(item => 
+              item.product?.mainCategory === 'decorations' || 
+              item.product?.category?.includes('decoration') ||
+              item.product?.name?.toLowerCase().includes('decoration')
+            )
+          ).length;
+
+          setSalesMetrics({
+            totalSales: totalSales,
+            giftOrders: completedOrders,
+            activeRentals: processingOrders,
+            decorationJobs: decorationJobs,
+            totalProducts: products.length,
+            totalUsers: users.length
           });
-          const data = await response.json();
-          setDashboardData(data);
+
+          // Process sales data for charts
+          const salesByMonth = processOrdersForChart(orders);
+          setRealSalesData(salesByMonth);
+
+          setDashboardData({ 
+            users: users,
+            orders: orders,
+            products: products
+          });
         } catch (error) {
           console.error('Error fetching dashboard data:', error);
           // Set empty data to prevent further errors
-          setDashboardData({ users: [] });
+          setDashboardData({ users: [], orders: [], products: [] });
+          setSalesMetrics({
+            totalSales: 0,
+            giftOrders: 0,
+            activeRentals: 0,
+            decorationJobs: 0,
+            totalProducts: 0,
+            totalUsers: 0
+          });
         }
       });
     };
 
     fetchDashboardData();
   }, [withLoading]);
+
+  // Function to process orders for chart data
+  const processOrdersForChart = (orders) => {
+    const monthlyData = {};
+    const currentYear = new Date().getFullYear();
+    
+    // Initialize months
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    months.forEach(month => {
+      monthlyData[month] = { month, gifts: 0, rentals: 0, decorations: 0 };
+    });
+
+    orders.forEach(order => {
+      const orderDate = new Date(order.orderedAt || order.createdAt);
+      if (orderDate.getFullYear() === currentYear) {
+        const month = months[orderDate.getMonth()];
+        const orderAmount = order.totalAmount || 0;
+        
+        // Categorize based on order items
+        if (order.items) {
+          order.items.forEach(item => {
+            const productName = item.product?.name?.toLowerCase() || '';
+            const productCategory = item.product?.mainCategory?.toLowerCase() || '';
+            
+            if (productCategory.includes('gift') || productName.includes('gift')) {
+              monthlyData[month].gifts += orderAmount / order.items.length;
+            } else if (productCategory.includes('rental') || productName.includes('rental')) {
+              monthlyData[month].rentals += orderAmount / order.items.length;
+            } else if (productCategory.includes('decoration') || productName.includes('decoration')) {
+              monthlyData[month].decorations += orderAmount / order.items.length;
+            } else {
+              // Default to gifts if category is unclear
+              monthlyData[month].gifts += orderAmount / order.items.length;
+            }
+          });
+        } else {
+          monthlyData[month].gifts += orderAmount;
+        }
+      }
+    });
+
+    return Object.values(monthlyData);
+  };
 
   // Fetch real product data and count low stock products
   useEffect(() => {
@@ -603,8 +739,10 @@ export default function Dashboard() {
                   <ShoppingCart className="h-5 w-5 text-pink-500" />
                   <span className="text-sm text-gray-500">Total Sales</span>
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-gray-800">$12,345</div>
-                <div className="text-xs text-green-600 mt-1">↑ 12% from last month</div>
+                <div className="text-xl md:text-2xl font-bold text-gray-800">
+                  ${salesMetrics.totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-xs text-green-600 mt-1">From {realOrdersData.length} orders</div>
               </CardContent>
             </Card>
 
@@ -612,10 +750,10 @@ export default function Dashboard() {
               <CardContent className={cn("p-4 md:p-6", isMobile && "flex flex-col items-center text-center")}>
                 <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
                   <Gift className="h-5 w-5 text-green-500" />
-                  <span className="text-sm text-gray-500">Gift Orders</span>
+                  <span className="text-sm text-gray-500">Completed Orders</span>
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-gray-800">1,245</div>
-                <div className="text-xs text-green-600 mt-1">↑ 8% from last month</div>
+                <div className="text-xl md:text-2xl font-bold text-gray-800">{salesMetrics.giftOrders}</div>
+                <div className="text-xs text-green-600 mt-1">Successfully delivered</div>
               </CardContent>
             </Card>
 
@@ -623,10 +761,10 @@ export default function Dashboard() {
               <CardContent className={cn("p-4 md:p-6", isMobile && "flex flex-col items-center text-center")}>
                 <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
                   <Package className="h-5 w-5 text-purple-500" />
-                  <span className="text-sm text-gray-500">Active Rentals</span>
+                  <span className="text-sm text-gray-500">Active Orders</span>
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-gray-800">45</div>
-                <div className="text-xs text-amber-600 mt-1">↓ 3% from last month</div>
+                <div className="text-xl md:text-2xl font-bold text-gray-800">{salesMetrics.activeRentals}</div>
+                <div className="text-xs text-amber-600 mt-1">In processing</div>
               </CardContent>
             </Card>
 
@@ -634,10 +772,10 @@ export default function Dashboard() {
               <CardContent className={cn("p-4 md:p-6", isMobile && "flex flex-col items-center text-center")}>
                 <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
                   <Sparkles className="h-5 w-5 text-amber-500" />
-                  <span className="text-sm text-gray-500">Decoration Jobs</span>
+                  <span className="text-sm text-gray-500">Decoration Orders</span>
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-gray-800">36</div>
-                <div className="text-xs text-green-600 mt-1">↑ 15% from last month</div>
+                <div className="text-xl md:text-2xl font-bold text-gray-800">{salesMetrics.decorationJobs}</div>
+                <div className="text-xs text-green-600 mt-1">All time</div>
               </CardContent>
             </Card>
           </div>
@@ -659,24 +797,24 @@ export default function Dashboard() {
                   <Card className="bg-white border-gray-200 shadow-sm">
                     <CardContent className="p-6">
                       <div className="text-sm text-gray-500 mb-1">Total Products</div>
-                      <div className="text-2xl font-bold text-gray-800">245</div>
-                      <div className="text-xs text-green-600 mt-1">↑ 12 new products added</div>
+                      <div className="text-2xl font-bold text-gray-800">{salesMetrics.totalProducts}</div>
+                      <div className="text-xs text-green-600 mt-1">In database</div>
                     </CardContent>
                   </Card>
 
                   <Card className="bg-white border-gray-200 shadow-sm">
                     <CardContent className="p-6">
-                      <div className="text-sm text-gray-500 mb-1">Rental Items</div>
-                      <div className="text-2xl font-bold text-gray-800">53</div>
-                      <div className="text-xs text-green-600 mt-1">↑ 8 new items added</div>
+                      <div className="text-sm text-gray-500 mb-1">Total Users</div>
+                      <div className="text-2xl font-bold text-gray-800">{salesMetrics.totalUsers}</div>
+                      <div className="text-xs text-green-600 mt-1">Registered users</div>
                     </CardContent>
                   </Card>
 
                   <Card className="bg-white border-gray-200 shadow-sm">
                     <CardContent className="p-6">
-                      <div className="text-sm text-gray-500 mb-1">Upcoming Events</div>
-                      <div className="text-2xl font-bold text-gray-800">12</div>
-                      <div className="text-xs text-amber-600 mt-1">3 events this week</div>
+                      <div className="text-sm text-gray-500 mb-1">Low Stock Items</div>
+                      <div className="text-2xl font-bold text-gray-800">{realLowStockCount}</div>
+                      <div className="text-xs text-amber-600 mt-1">Need attention</div>
                     </CardContent>
                   </Card>
                 </div>
@@ -688,34 +826,42 @@ export default function Dashboard() {
                     <CardHeader>
                       <div className="flex justify-between items-center">
                         <CardTitle className="text-gray-800">Popular Products</CardTitle>
-                        <span className="text-sm text-gray-500">This week</span>
+                        <span className="text-sm text-gray-500">Current stock</span>
                       </div>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {popularProducts.map((product, index) => (
-                          <div key={index} className="flex items-center justify-between">
+                        {realProductsData.slice(0, 3).map((product, index) => (
+                          <div key={product._id || index} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className={`w-3 h-3 rounded-full ${product.color}`}></div>
+                              <div className={`w-3 h-3 rounded-full ${
+                                index === 0 ? 'bg-green-500' : 
+                                index === 1 ? 'bg-purple-500' : 'bg-amber-500'
+                              }`}></div>
                               <div>
                                 <div className="text-gray-800 font-medium">{product.name}</div>
-                                <div className="text-sm text-gray-500">Category: {product.category}</div>
+                                <div className="text-sm text-gray-500">
+                                  Price: ${product.salePrice || product.retailPrice || 0}
+                                </div>
                               </div>
                             </div>
                             <Badge
                               variant={
-                                product.status === "In Stock"
-                                  ? "default"
-                                  : product.status === "Low Stock"
-                                    ? "secondary"
-                                    : "outline"
+                                product.stock > 20 ? "default" :
+                                product.stock > 0 ? "secondary" : "destructive"
                               }
                               className="text-xs"
                             >
-                              {product.status}
+                              {product.stock > 20 ? "In Stock" : 
+                               product.stock > 0 ? "Low Stock" : "Out of Stock"}
                             </Badge>
                           </div>
                         ))}
+                        {realProductsData.length === 0 && (
+                          <div className="text-center text-gray-500 py-4">
+                            No products found
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -731,7 +877,7 @@ export default function Dashboard() {
                     <CardContent>
                       <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={salesData}>
+                          <LineChart data={realSalesData.length > 0 ? realSalesData : salesData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                             <XAxis dataKey="month" stroke="#6B7280" />
                             <YAxis stroke="#6B7280" />
@@ -1070,20 +1216,27 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {productStatus.map((item, index) => (
-                          <div key={index}>
+                        {realProductsData.slice(0, 6).map((product, index) => (
+                          <div key={product._id || index}>
                             <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-gray-700">{item.product}</span>
-                              <span className={`text-sm ${item.isLow ? "text-red-600 font-medium" : "text-gray-800"}`}>
-                                {item.stock}%{item.isLow && " (Low)"}
+                              <span className="text-sm text-gray-700">{product.name}</span>
+                              <span className={`text-sm ${
+                                product.stock < 10 ? "text-red-600 font-medium" : "text-gray-800"
+                              }`}>
+                                {product.stock || 0}{product.stock < 10 && " (Low)"}
                               </span>
                             </div>
                             <Progress
-                              value={item.stock}
+                              value={Math.min((product.stock || 0), 100)}
                               className="h-2"
                             />
                           </div>
                         ))}
+                        {realProductsData.length === 0 && (
+                          <div className="text-center text-gray-500 py-4">
+                            No products found
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -1144,32 +1297,41 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {recentOrders.map((order, index) => (
-                          <div key={index} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
+                        {realOrdersData.slice(0, 4).map((order, index) => (
+                          <div key={order._id || index} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
                             <div>
-                              <div className="font-medium text-gray-800">{order.customer}</div>
-                              <div className="text-sm text-gray-500">
-                                {order.order} • {order.date}
+                              <div className="font-medium text-gray-800">
+                                {order.user?.firstName || 'Unknown'} {order.user?.lastName || 'User'}
                               </div>
-                              <div className="text-sm text-gray-600">{order.items}</div>
+                              <div className="text-sm text-gray-500">
+                                {order._id?.slice(-6) || 'N/A'} • {new Date(order.orderedAt || order.createdAt).toLocaleDateString()}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {order.items?.length || 0} item(s)
+                              </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-medium text-gray-800">{order.amount}</div>
+                              <div className="font-medium text-gray-800">
+                                ${order.totalAmount?.toFixed(2) || '0.00'}
+                              </div>
                               <Badge
                                 variant={
-                                  order.status === "Completed"
-                                    ? "default"
-                                    : order.status === "Processing"
-                                      ? "secondary"
-                                      : "outline"
+                                  order.status === "Delivered" ? "default" :
+                                  order.status === "Processing" ? "secondary" :
+                                  order.status === "Pending" ? "outline" : "secondary"
                                 }
                                 className="text-xs"
                               >
-                                {order.status}
+                                {order.status || 'Unknown'}
                               </Badge>
                             </div>
                           </div>
                         ))}
+                        {realOrdersData.length === 0 && (
+                          <div className="text-center text-gray-500 py-4">
+                            No orders found
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -1181,21 +1343,42 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {recentActivities.map((activity, index) => (
-                          <div key={index} className="flex items-start gap-3">
+                        {realOrdersData.slice(0, 4).map((order, index) => (
+                          <div key={order._id || index} className="flex items-start gap-3">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={activity.avatar || "/placeholder.svg"} />
-                              <AvatarFallback>{activity.user.charAt(0)}</AvatarFallback>
+                              <AvatarFallback>
+                                {(order.user?.firstName?.charAt(0) || 'U') + (order.user?.lastName?.charAt(0) || '')}
+                              </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <div className="text-sm text-gray-800">
-                                <span className="font-medium">{activity.user}</span> {activity.action}{" "}
-                                <span className="text-pink-600">{activity.item}</span>
+                                <span className="font-medium">
+                                  {order.user?.firstName || 'Unknown'} {order.user?.lastName || 'User'}
+                                </span> placed an order for{" "}
+                                <span className="text-pink-600">
+                                  {order.items?.length || 0} item(s)
+                                </span>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">{activity.time}</div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {order.orderedAt ? 
+                                  (() => {
+                                    const orderDate = new Date(order.orderedAt);
+                                    const now = new Date();
+                                    const diffHours = Math.floor((now - orderDate) / (1000 * 60 * 60));
+                                    if (diffHours < 24) return `${diffHours} hours ago`;
+                                    const diffDays = Math.floor(diffHours / 24);
+                                    return `${diffDays} days ago`;
+                                  })() : 'Recently'
+                                }
+                              </div>
                             </div>
                           </div>
                         ))}
+                        {realOrdersData.length === 0 && (
+                          <div className="text-center text-gray-500 py-4">
+                            No recent activities
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -1247,16 +1430,16 @@ export default function Dashboard() {
                   <Card className="bg-white border-gray-200 shadow-sm">
                     <CardContent className="p-4 flex flex-col items-center text-center">
                       <div className="text-sm text-gray-500 mb-1">Total Products</div>
-                      <div className="text-xl font-bold text-gray-800">245</div>
-                      <div className="text-xs text-green-600 mt-1">↑ 12 new</div>
+                      <div className="text-xl font-bold text-gray-800">{salesMetrics.totalProducts}</div>
+                      <div className="text-xs text-green-600 mt-1">In database</div>
                     </CardContent>
                   </Card>
 
                   <Card className="bg-white border-gray-200 shadow-sm">
                     <CardContent className="p-4 flex flex-col items-center text-center">
-                      <div className="text-sm text-gray-500 mb-1">Rental Items</div>
-                      <div className="text-xl font-bold text-gray-800">53</div>
-                      <div className="text-xs text-green-600 mt-1">↑ 8 new</div>
+                      <div className="text-sm text-gray-500 mb-1">Total Users</div>
+                      <div className="text-xl font-bold text-gray-800">{salesMetrics.totalUsers}</div>
+                      <div className="text-xs text-green-600 mt-1">Registered</div>
                     </CardContent>
                   </Card>
                 </div>
@@ -1266,34 +1449,42 @@ export default function Dashboard() {
                   <CardHeader className="p-4">
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-gray-800 text-lg">Popular Products</CardTitle>
-                      <span className="text-xs text-gray-500">This week</span>
+                      <span className="text-xs text-gray-500">Current stock</span>
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
                     <div className="space-y-4">
-                      {popularProducts.map((product, index) => (
-                        <div key={index} className="flex items-center justify-between">
+                      {realProductsData.slice(0, 3).map((product, index) => (
+                        <div key={product._id || index} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${product.color}`}></div>
+                            <div className={`w-3 h-3 rounded-full ${
+                              index === 0 ? 'bg-green-500' : 
+                              index === 1 ? 'bg-purple-500' : 'bg-amber-500'
+                            }`}></div>
                             <div>
                               <div className="text-gray-800 font-medium">{product.name}</div>
-                              <div className="text-xs text-gray-500">Category: {product.category}</div>
+                              <div className="text-xs text-gray-500">
+                                Price: ${product.salePrice || product.retailPrice || 0}
+                              </div>
                             </div>
                           </div>
                           <Badge
                             variant={
-                              product.status === "In Stock"
-                                ? "default"
-                                : product.status === "Low Stock"
-                                  ? "secondary"
-                                  : "outline"
+                              product.stock > 20 ? "default" :
+                              product.stock > 0 ? "secondary" : "destructive"
                             }
                             className="text-xs"
                           >
-                            {product.status}
+                            {product.stock > 20 ? "In Stock" : 
+                             product.stock > 0 ? "Low Stock" : "Out of Stock"}
                           </Badge>
                         </div>
                       ))}
+                      {realProductsData.length === 0 && (
+                        <div className="text-center text-gray-500 py-4">
+                          No products found
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1318,7 +1509,7 @@ export default function Dashboard() {
                   <CardContent className="p-4 pt-0">
                     <div className="h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={salesData.slice(0, 6)}>
+                        <BarChart data={realSalesData.length > 0 ? realSalesData.slice(0, 6) : salesData.slice(0, 6)}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                           <XAxis dataKey="month" stroke="#6B7280" />
                           <YAxis stroke="#6B7280" />
@@ -1515,20 +1706,27 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
                     <div className="space-y-4">
-                      {productStatus.slice(0, 6).map((item, index) => (
-                        <div key={index}>
+                      {realProductsData.slice(0, 6).map((product, index) => (
+                        <div key={product._id || index}>
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-gray-700">{item.product}</span>
-                            <span className={`text-sm ${item.isLow ? "text-red-600 font-medium" : "text-gray-800"}`}>
-                              {item.stock}%{item.isLow && " (Low)"}
+                            <span className="text-sm text-gray-700">{product.name}</span>
+                            <span className={`text-sm ${
+                              product.stock < 10 ? "text-red-600 font-medium" : "text-gray-800"
+                            }`}>
+                              {product.stock || 0}{product.stock < 10 && " (Low)"}
                             </span>
                           </div>
                           <Progress
-                            value={item.stock}
+                            value={Math.min((product.stock || 0), 100)}
                             className="h-2"
                           />
                         </div>
                       ))}
+                      {realProductsData.length === 0 && (
+                        <div className="text-center text-gray-500 py-4">
+                          No products found
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1544,32 +1742,38 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
                     <div className="space-y-4">
-                      {recentOrders.slice(0, 4).map((order, index) => (
-                        <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                      {realOrdersData.slice(0, 4).map((order, index) => (
+                        <div key={order._id || index} className="p-3 bg-gray-50 rounded-lg">
                           <div className="flex justify-between items-start mb-2">
-                            <div className="font-medium text-gray-800">{order.customer}</div>
-                            <div className="font-medium text-gray-800">{order.amount}</div>
+                            <div className="font-medium text-gray-800">
+                              {order.user?.firstName || 'Unknown'} {order.user?.lastName || 'User'}
+                            </div>
+                            <div className="font-medium text-gray-800">
+                              ${order.totalAmount?.toFixed(2) || '0.00'}
+                            </div>
                           </div>
                           <div className="text-sm text-gray-500 mb-2">
-                            {order.order} • {order.date}
+                            {order._id?.slice(-6) || 'N/A'} • {new Date(order.orderedAt || order.createdAt).toLocaleDateString()}
                           </div>
                           <div className="flex justify-between items-center">
-                            <div className="text-sm text-gray-600">{order.items}</div>
+                            <div className="text-sm text-gray-600">{order.items?.length || 0} item(s)</div>
                             <Badge
                               variant={
-                                order.status === "Completed"
-                                  ? "default"
-                                  : order.status === "Processing"
-                                    ? "secondary"
-                                    : "outline"
+                                order.status === "Delivered" ? "default" :
+                                order.status === "Processing" ? "secondary" : "outline"
                               }
                               className="text-xs"
                             >
-                              {order.status}
+                              {order.status || 'Unknown'}
                             </Badge>
                           </div>
                         </div>
                       ))}
+                      {realOrdersData.length === 0 && (
+                        <div className="text-center text-gray-500 py-4">
+                          No orders found
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1581,21 +1785,42 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent className="p-4 pt-0">
                     <div className="space-y-4">
-                      {recentActivities.slice(0, 4).map((activity, index) => (
-                        <div key={index} className="flex items-start gap-3">
+                      {realOrdersData.slice(0, 4).map((order, index) => (
+                        <div key={order._id || index} className="flex items-start gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={activity.avatar || "/placeholder.svg"} />
-                            <AvatarFallback>{activity.user.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>
+                              {(order.user?.firstName?.charAt(0) || 'U') + (order.user?.lastName?.charAt(0) || '')}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
                             <div className="text-sm text-gray-800">
-                              <span className="font-medium">{activity.user}</span> {activity.action}{" "}
-                              <span className="text-pink-600">{activity.item}</span>
+                              <span className="font-medium">
+                                {order.user?.firstName || 'Unknown'} {order.user?.lastName || 'User'}
+                              </span> placed an order for{" "}
+                              <span className="text-pink-600">
+                                {order.items?.length || 0} item(s)
+                              </span>
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">{activity.time}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {order.orderedAt ? 
+                                (() => {
+                                  const orderDate = new Date(order.orderedAt);
+                                  const now = new Date();
+                                  const diffHours = Math.floor((now - orderDate) / (1000 * 60 * 60));
+                                  if (diffHours < 24) return `${diffHours} hours ago`;
+                                  const diffDays = Math.floor(diffHours / 24);
+                                  return `${diffDays} days ago`;
+                                })() : 'Recently'
+                              }
+                            </div>
                           </div>
                         </div>
                       ))}
+                      {realOrdersData.length === 0 && (
+                        <div className="text-center text-gray-500 py-4">
+                          No recent activities
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

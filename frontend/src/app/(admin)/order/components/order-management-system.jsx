@@ -34,6 +34,7 @@ import {
 const statusColors = {
   pending: "bg-yellow-100 text-yellow-800",
   processing: "bg-blue-100 text-blue-800",
+  packing: "bg-orange-100 text-orange-800",
   shipped: "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
@@ -57,7 +58,7 @@ export function OrderManagementSystem() {
   const [orders, setOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [activeTab, setActiveTab] = useState("accepted")
+  const [activeTab, setActiveTab] = useState("pending")
   const [expandedOrders, setExpandedOrders] = useState([])
   const [internalNotes, setInternalNotes] = useState({})
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -73,7 +74,8 @@ export function OrderManagementSystem() {
         order.items.some((item) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))) ?? false
 
     const matchesTab =
-      (activeTab === "accepted" && order.status === "pending") ||
+      (activeTab === "pending" && order.status === "pending") ||
+      (activeTab === "accepted" && order.status === "processing") ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
       (activeTab === "all") // Show ALL orders regardless of status in All tab
@@ -244,7 +246,7 @@ export function OrderManagementSystem() {
         button.textContent = "Processing...";
       }
 
-      // First, accept the order (Pending -> Processing)
+      // Accept the order (Pending -> Processing)
       const acceptResponse = await axios.put(
         `${API_BASE_URL}/orders/accept`,
         {
@@ -258,37 +260,22 @@ export function OrderManagementSystem() {
       if (acceptResponse.data.success) {
         console.log(`Order ${orderId} accepted successfully`);
         
-        // Then, update to packing (Processing -> Packing)
-        const packingResponse = await axios.put(
-          `${API_BASE_URL}/orders/update-to-packing`,
-          {
-            orderId: orderId,
-          },
-          {
-            withCredentials: true
-          }
+        // Update local state
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: "processing" }
+              : order
+          )
         );
 
-        if (packingResponse.data.success) {
-          console.log(`Order ${orderId} status updated to Packing`);
-          // Update local state
-          setOrders((prevOrders) =>
-            prevOrders.map((order) =>
-              order.id === orderId
-                ? { ...order, status: "packing" }
-                : order
-            )
-          );
-
-          // Reduce product stock
-          const order = orders.find((o) => o.id === orderId);
-          if (order && order.items) {
-            await reduceProductStock(order.items);
-          }
-        } else {
-          console.error(`Failed to update order to packing: ${packingResponse.data.message}`);
-          alert(`Failed to update order to packing: ${packingResponse.data.message}`);
+        // Reduce product stock
+        const order = orders.find((o) => o.id === orderId);
+        if (order && order.items) {
+          await reduceProductStock(order.items);
         }
+
+        alert(`Order ${orderId} has been accepted and moved to processing!`);
       } else {
         console.error(`Failed to accept order: ${acceptResponse.data.message}`);
         alert(`Failed to accept order: ${acceptResponse.data.message}`);
@@ -305,6 +292,58 @@ export function OrderManagementSystem() {
       if (button) {
         button.disabled = false;
         button.textContent = "Accept Order";
+      }
+    }
+  }
+
+  const updateOrderToPacking = async (orderId) => {
+    try {
+      console.log("Moving order to packing:", orderId);
+
+      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Processing...";
+      }
+
+      const response = await axios.put(
+        `${API_BASE_URL}/orders/update-to-packing`,
+        {
+          orderId: orderId,
+        },
+        {
+          withCredentials: true
+        }
+      );
+
+      if (response.data.success) {
+        console.log(`Order ${orderId} status updated to Packing`);
+        // Update local state
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: "packing" }
+              : order
+          )
+        );
+
+        alert(`Order ${orderId} has been moved to packing!`);
+      } else {
+        console.error(`Failed to update order to packing: ${response.data.message}`);
+        alert(`Failed to update order to packing: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error("Error updating order to packing:", error);
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error updating order to packing. Please try again.");
+      }
+    } finally {
+      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Move to Packing";
       }
     }
   }
@@ -408,8 +447,8 @@ export function OrderManagementSystem() {
                     <td>${item.sku}</td>
                     <td>${item.category}</td>
                     <td>${item.quantity}</td>
-                    <td>£${item.price}</td>
-                    <td>£${(item.price * item.quantity).toFixed(2)}</td>
+                    <td>${item.price}</td>
+                    <td>${(item.price * item.quantity).toFixed(2)}</td>
                   </tr>
                 `,
                   )
@@ -420,9 +459,9 @@ export function OrderManagementSystem() {
             <div class="section">
               <h3>💰 Payment Summary</h3>
               <div class="total-summary">
-                <p><span class="label">Subtotal:</span> £${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
-                <p><span class="label">Total Amount:</span> <strong>£${order.totalAmount}</strong></p>
-                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> £${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
+                <p><span class="label">Subtotal:</span> $${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
+                <p><span class="label">Total Amount:</span> <strong>$${order.totalAmount}</strong></p>
+                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> $${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
               </div>
             </div>
             
@@ -699,8 +738,8 @@ export function OrderManagementSystem() {
                           <td>${item.sku}</td>
                           <td>${item.category}</td>
                           <td style="text-align: center">${item.quantity}</td>
-                          <td style="text-align: right">£${item.price.toFixed(2)}</td>
-                          <td style="text-align: right"><strong>£${(item.price * item.quantity).toFixed(2)}</strong></td>
+                          <td style="text-align: right">$${item.price.toFixed(2)}</td>
+                          <td style="text-align: right"><strong>$${(item.price * item.quantity).toFixed(2)}</strong></td>
                         </tr>
                       `).join('')}
                     </tbody>
@@ -712,19 +751,19 @@ export function OrderManagementSystem() {
                   <div class="payment-summary">
                     <div class="payment-row">
                       <span>Subtotal (${totalItems} items):</span>
-                      <span>£${subtotal.toFixed(2)}</span>
+                      <span>$${subtotal.toFixed(2)}</span>
                     </div>
                     <div class="payment-row">
                       <span>Shipping & Handling:</span>
-                      <span>£0.00</span>
+                      <span>$0.00</span>
                     </div>
                     <div class="payment-row">
                       <span>Tax:</span>
-                      <span>£0.00</span>
+                      <span>$0.00</span>
                     </div>
                     <div class="payment-row total">
                       <span>TOTAL AMOUNT:</span>
-                      <span>£${order.totalAmount.toFixed(2)}</span>
+                      <span>$${order.totalAmount.toFixed(2)}</span>
                     </div>
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
                       <div class="payment-row">
@@ -775,10 +814,10 @@ export function OrderManagementSystem() {
 
   const confirmPacked = async (orderId) => {
     const buttonId = `#confirm-packed-button-${orderId}`;
-    updateButtonState(buttonId, true, "Confirm Packed");
+    updateButtonState(buttonId, true, "Mark as Shipped");
 
     try {
-      console.log("Order ID being sent:", orderId); // Debugging log
+      console.log("Marking order as shipped:", orderId);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-shipped`,
@@ -797,13 +836,21 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "shipped" } : order
           )
         );
+
+        alert(`Order ${orderId} has been marked as shipped and is ready for delivery!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
+        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error updating order status. Please try again.");
+      }
     } finally {
-      updateButtonState(buttonId, false, "Confirm Packed");
+      updateButtonState(buttonId, false, "Mark as Shipped");
     }
   };
 
@@ -812,7 +859,7 @@ export function OrderManagementSystem() {
     updateButtonState(buttonId, true, "Mark as Delivered");
 
     try {
-      console.log("Order ID being sent:", orderId); // Debugging log
+      console.log("Marking order as delivered:", orderId);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-delivered`,
@@ -831,11 +878,19 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "delivered" } : order
           )
         );
+
+        alert(`Order ${orderId} has been marked as delivered!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
+        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+      if (error.response?.data?.message) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert("Error updating order status. Please try again.");
+      }
     } finally {
       updateButtonState(buttonId, false, "Mark as Delivered");
     }
@@ -925,7 +980,7 @@ export function OrderManagementSystem() {
           createdAt: order.createdAt,
           orderedAt: order.orderedAt,
           orderDate: order.orderedAt,
-          status: order.status.toLowerCase().replace(' ', '_'),
+          status: order.status.toLowerCase(), // Convert status to lowercase to match the UI expectations
           total: order.total,
           totalAmount: order.total,
           statusHistory: order.statusHistory || [],
@@ -1023,7 +1078,7 @@ export function OrderManagementSystem() {
               <div class="section">
                 <h3>Order Details</h3>
                 <p><span class="label">Order Date:</span> ${new Date(order.orderDate).toLocaleDateString()}</p>
-                <p><span class="label">Total Amount:</span> £${order.totalAmount}</p>
+                <p><span class="label">Total Amount:</span> $${order.totalAmount}</p>
               </div>
             </body>
           </html>
@@ -1099,11 +1154,12 @@ export function OrderManagementSystem() {
 
             {/* Enhanced Order Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="flex justify-between gap-x-4 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
-                <TabsTrigger value="accepted" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">Accepted</TabsTrigger>
-                <TabsTrigger value="packed" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">Packed</TabsTrigger>
-                <TabsTrigger value="delivery" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">Delivery</TabsTrigger>
-                <TabsTrigger value="all" className="flex-1 data-[state=active]:bg-purple-600 data-[state=active]:text-white">All</TabsTrigger>
+              <TabsList className="grid grid-cols-5 gap-x-2 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
+                <TabsTrigger value="pending" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">Pending Orders</TabsTrigger>
+                <TabsTrigger value="accepted" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Processing</TabsTrigger>
+                <TabsTrigger value="packed" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Packing</TabsTrigger>
+                <TabsTrigger value="delivery" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Ready for Delivery</TabsTrigger>
+                <TabsTrigger value="all" className="data-[state=active]:bg-gray-600 data-[state=active]:text-white">All Orders</TabsTrigger>
               </TabsList>
               <TabsContent value={activeTab}>
                 <div className="rounded-md border bg-white">
@@ -1217,9 +1273,9 @@ export function OrderManagementSystem() {
 
                             <TableCell>
                               <div className="space-y-1">
-                                <div className="font-medium text-lg">£{order.totalAmount}</div>
+                                <div className="font-medium text-lg">${order.totalAmount}</div>
                                 {order.codAmount > 0 && (
-                                  <div className="text-xs text-orange-600 font-medium">💵 COD: £{order.codAmount}</div>
+                                  <div className="text-xs text-orange-600 font-medium">💵 COD: ${order.codAmount}</div>
                                 )}
                                 <div className="text-xs text-muted-foreground">
                                   {order.paymentMethod.replace("_", " ")}
@@ -1276,40 +1332,63 @@ export function OrderManagementSystem() {
                                 ) : null}
                               </Dialog>
 
-                              {activeTab === "accepted" && (
+                              {/* Show Accept Order button for pending orders */}
+                              {order.status === "pending" && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => acceptOrder(order.id)}
-                                  className="ml-2"
+                                  variant="default"
+                                  onClick={() => confirmAction("Accept this order and start processing?", () => acceptOrder(order.id))}
+                                  className="ml-2 bg-green-600 hover:bg-green-700"
                                   id={`accept-order-button-${order.id}`}
                                 >
                                   Accept Order
                                 </Button>
                               )}
 
-                              {activeTab === "packed" && (
+                              {/* Show Move to Packing button for processing orders */}
+                              {order.status === "processing" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmPacked(order.id)}
-                                  className="ml-2"
-                                  id={`confirm-packed-button-${order.id}`}
+                                  onClick={() => confirmAction("Move this order to packing?", () => updateOrderToPacking(order.id))}
+                                  className="ml-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+                                  id={`move-to-packing-button-${order.id}`}
                                 >
-                                  Confirm Packed
+                                  Start Packing
                                 </Button>
                               )}
 
-                              {activeTab === "delivery" && (
+                              {/* Show Mark as Shipped button for packing orders */}
+                              {order.status === "packing" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => markAsDelivered(order.id)}
-                                  className="ml-2"
+                                  onClick={() => confirmAction("Mark this order as shipped?", () => confirmPacked(order.id))}
+                                  className="ml-2 border-orange-600 text-orange-600 hover:bg-orange-50"
+                                  id={`confirm-packed-button-${order.id}`}
+                                >
+                                  Mark as Shipped
+                                </Button>
+                              )}
+
+                              {/* Show Mark as Delivered button for shipped orders */}
+                              {order.status === "shipped" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => confirmAction("Mark this order as delivered?", () => markAsDelivered(order.id))}
+                                  className="ml-2 border-purple-600 text-purple-600 hover:bg-purple-50"
                                   id={`mark-as-delivered-button-${order.id}`}
                                 >
                                   Mark as Delivered
                                 </Button>
+                              )}
+
+                              {/* Show completion status for delivered orders */}
+                              {order.status === "delivered" && (
+                                <Badge className="ml-2 bg-green-100 text-green-800">
+                                  ✅ Completed
+                                </Badge>
                               )}
                             </TableCell>
                           </TableRow>

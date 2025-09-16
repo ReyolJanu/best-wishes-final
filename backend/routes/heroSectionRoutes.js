@@ -8,7 +8,7 @@ const {
   deleteHeroSection,
   toggleHeroSectionStatus
 } = require('../controllers/heroSectionController');
-const upload = require('../middleware/uploadMiddleware');
+const { upload } = require('../middleware/uploadMiddleware');
 // const { isAuthenticated, authorizeRoles } = require('../middleware/authMiddleware');
 
 // Public routes - using /hero-sections prefix
