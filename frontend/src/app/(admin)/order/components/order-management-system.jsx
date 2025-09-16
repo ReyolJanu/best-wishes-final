@@ -1543,8 +1543,22 @@ export function OrderManagementSystem() {
                                 
                                 {/* Show products based on expanded state */}
                                 {expandedOrders.includes(order.id) ? (
-                                                                  // Expanded: Do not show any product details
-                                                                  <></>
+                                  // Show all products when expanded
+                                  <>
+                                    {order.items.map((item, index) => (
+                                      <div key={index} className="text-xs bg-gray-50 p-2 rounded mb-1">
+                                        <div className="font-medium text-blue-600">{item.name}</div>
+                                        <div className="text-muted-foreground">SKU: {item.sku}</div>
+                                        <div className="text-muted-foreground">Category: {item.category}</div>
+                                        <div className="text-green-600">£{item.price} × {item.quantity}</div>
+                                        {item.image && item.image !== '/placeholder.svg' && (
+                                          <div className="mt-1">
+                                            <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded" />
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </>
                                 ) : (
                                     // Collapsed: Only show total items and button
                                     <>
