@@ -124,6 +124,45 @@ exports.getRandomProducts = async (req, res) => {
   }
 };
 
+// Get random products per category (e.g., 2 for every category)
+exports.getRandomByCategory = async (req, res) => {
+  try {
+    let per = parseInt(req.query.per, 10);
+    if (Number.isNaN(per) || per <= 0) per = 2;
+    if (per > 10) per = 10; // safety cap
+
+    const match = {};
+    const { status } = req.query;
+    if (status) match.status = status;
+
+    const pipeline = [];
+    if (Object.keys(match).length) pipeline.push({ $match: match });
+    // randomize, then take first `per` per category
+    pipeline.push(
+      { $addFields: { _rand: { $rand: {} } } },
+      { $sort: { _rand: 1 } },
+      {
+        $group: {
+          _id: "$mainCategory",
+          products: { $push: "$$ROOT" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          category: "$_id",
+          products: { $slice: ["$products", per] }
+        }
+      }
+    );
+
+    const results = await Product.aggregate(pipeline);
+    return res.json({ success: true, data: results });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Error fetching random products per category', error: error.message });
+  }
+};
+
 exports.getAllProducts = async (req, res) => {
   try {
     const {
