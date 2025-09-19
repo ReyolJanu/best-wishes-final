@@ -81,6 +81,8 @@ export default function FancyCarousel() {
 
   const [showMoreCategories, setShowMoreCategories] = useState(false);
   const [sliderRef, setSliderRef] = useState(null);
+  const [randomAllProducts, setRandomAllProducts] = useState([]);
+  const [randomAllLoading, setRandomAllLoading] = useState(false);
 
   useEffect(() => {
     dispatch(getProducts())
@@ -166,7 +168,50 @@ export default function FancyCarousel() {
 
     fetchCategories();
 
+    // Fetch a random sample of products for the All Products grid
+    const fetchRandomAll = async () => {
+      try {
+        setRandomAllLoading(true);
+        const res = await fetch(`${apiUrl}/products/random?limit=12`);
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.data)) {
+          setRandomAllProducts(data.data);
+        } else if (Array.isArray(data)) {
+          // Some APIs return arrays directly
+          setRandomAllProducts(data.slice(0, 12));
+        } else {
+          // Fallback: shuffle local allProducts if available
+          if (Array.isArray(allProducts) && allProducts.length > 0) {
+            const shuffled = [...allProducts].sort(() => Math.random() - 0.5).slice(0, 12);
+            setRandomAllProducts(shuffled);
+          } else {
+            setRandomAllProducts([]);
+          }
+        }
+      } catch (e) {
+        // Fallback: local shuffle
+        if (Array.isArray(allProducts) && allProducts.length > 0) {
+          const shuffled = [...allProducts].sort(() => Math.random() - 0.5).slice(0, 12);
+          setRandomAllProducts(shuffled);
+        } else {
+          setRandomAllProducts([]);
+        }
+      } finally {
+        setRandomAllLoading(false);
+      }
+    };
+
+    fetchRandomAll();
+
   }, [dispatch])
+
+  // If server random fetch failed/empty, derive a random sample from redux products when they arrive
+  useEffect(() => {
+    if ((!randomAllProducts || randomAllProducts.length === 0) && Array.isArray(allProducts) && allProducts.length > 0) {
+      const shuffled = [...allProducts].sort(() => Math.random() - 0.5).slice(0, 12);
+      setRandomAllProducts(shuffled);
+    }
+  }, [allProducts]);
 
   // Helper function to get product image
   const getProductImage = (product) => {
@@ -545,13 +590,18 @@ export default function FancyCarousel() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 ">
-            {allProducts && allProducts.length > 0 ? (
-              allProducts.slice(0, 12).map((product) => (
+            {randomAllLoading ? (
+              <div className="col-span-full text-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto"></div>
+                <p className="mt-3 text-gray-600">Loading products...</p>
+              </div>
+            ) : randomAllProducts && randomAllProducts.length > 0 ? (
+              randomAllProducts.map((product) => (
                 <Link key={product._id} href={`/productDetail/${product._id}`} className="block">
                   <CardContent className="p-0 border-1 border-[#D9D9D9] rounded-[10px]">
                     <div className="relative">
                       <Image
-                        src={product.images[0].url || "/placeholder.svg"}
+                        src={getProductImage(product)}
                         alt={product.name}
                         width={200}
                         height={200}
