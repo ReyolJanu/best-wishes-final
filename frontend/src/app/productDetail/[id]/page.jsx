@@ -20,6 +20,8 @@ import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/C
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"
+import ProductSpecs from "../../components/ProductSpecs"
+import BentoProductGrid from "../../components/BentoProductGrid"
 import { useRouter } from 'next/navigation';
 
 function ProductDetailPage() {
@@ -316,6 +318,8 @@ function ProductDetailPage() {
           <p className='font-content text-gray-600'>
             {product.detailedDescription || product.shortDescription}
           </p>
+          <ProductSpecs product={product} />
+          <BentoProductGrid product={product} />
         </div>
 
         {/* all Products */}
