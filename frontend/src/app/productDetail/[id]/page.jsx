@@ -21,7 +21,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"
 import ProductDetails from "../../components/ProductDetails"
-import ImageMagnifier from "../../components/ImageMagnifier"
+// import ImageMagnifier from "../../components/ImageMagnifier"
+import ProductImage from "@/components/ProductImage";
 import { useRouter } from 'next/navigation';
 
 function ProductDetailPage() {
@@ -210,19 +211,8 @@ function ProductDetailPage() {
         <div className='w-full grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto mt-[20px]'>
           {/* Left Section - Image & Description */}
           <div className='flex-col justify-center col-span-12 lg:col-span-7'>
-            <div className='w-full h-[300px] sm:h-[400px] md:h-[500px] bg-gray-100 rounded-[10px] overflow-hidden border-1 border-[#D9D9D9]/50 p-2'>
-              <ImageMagnifier
-                src={getMainImage()}
-                alt={product.name}
-                lensSize={140}
-                zoomScale={2.4}
-                previewWidth={360}
-                previewHeight={360}
-                className="w-full h-full"
-                onError={() => {
-                  if (!mainImageError) setMainImageError(true);
-                }}
-              />
+            <div className='w-full max-w-[640px] mx-auto bg-gray-100 rounded-[10px] overflow-hidden border-1 border-[#D9D9D9]/50 p-2'>
+              <ProductImage src={getMainImage()} alt={product.name} aspect="auto" />
             </div>
             {thumbnailImages.length > 0 && (
               <div className='flex space-x-1 pt-[10px]'>
