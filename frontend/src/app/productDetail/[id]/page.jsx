@@ -20,8 +20,7 @@ import CollaborativePurchaseModal from '../../modal/CollaborativePurchaseModal/C
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Footer from "../../components/footer/page"
-import ProductSpecs from "../../components/ProductSpecs"
-import BentoProductGrid from "../../components/BentoProductGrid"
+import ProductDetails from "../../components/ProductDetails"
 import { useRouter } from 'next/navigation';
 
 function ProductDetailPage() {
@@ -41,6 +40,16 @@ function ProductDetailPage() {
   const [randomProducts, setRandomProducts] = useState([]);
   const [randomLoading, setRandomLoading] = useState(false);
   const router = useRouter();
+
+  // Currency formatter for UK pounds
+  const formatGBP = (value) => {
+    const num = typeof value === 'number' ? value : Number(value || 0);
+    try {
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(num);
+    } catch {
+      return `£${num.toFixed(2)}`;
+    }
+  };
 
 
   // Fetch specific product by ID
@@ -248,12 +257,25 @@ function ProductDetailPage() {
                 </div>
                 <span>(27 Ratings)</span>
               </div>
-              <div className='flex items-center space-x-[15px]'>
-                <span className='font-extra-large font-bold'>US ${product.salePrice}</span>
-                {product.salePrice > 0 && (
-                  <span className='font-content line-through'>US ${product.retailPrice}</span>
-                )}
+              <div className='flex items-center gap-3'>
+                <span className='font-extra-large font-bold text-[#822BE2]'>
+                  {formatGBP(product.salePrice > 0 ? product.salePrice : product.retailPrice)}
+                </span>
+                {product.salePrice > 0 && product.retailPrice ? (
+                  <span className='font-content line-through text-red-500'>
+                    {formatGBP(product.retailPrice)}
+                  </span>
+                ) : null}
               </div>
+              {product.salePrice > 0 && product.retailPrice ? (
+                <div className='text-sm text-green-600'>
+                  {(() => {
+                    const save = Math.max((product.retailPrice || 0) - (product.salePrice || 0), 0);
+                    const pct = product.retailPrice ? Math.round((save / product.retailPrice) * 100) : 0;
+                    return save > 0 ? `Save ${formatGBP(save)} (${pct}%)` : null;
+                  })()}
+                </div>
+              ) : null}
               <div className='flex items-center space-x-[10px]'>
                 <span className='font-medium'>Quantity</span>
                 <button onClick={decreaseQuantity} className='border bg-[#D9D9D9] rounded-[5px] w-[25px] h-[25px]'>-</button>
@@ -271,7 +293,7 @@ function ProductDetailPage() {
                 className="flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:opacity-90"
                 onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}
               >
-                Get now - US ${(product.salePrice * quantity).toFixed(2)}
+                {`Get now - ${formatGBP(((product.salePrice > 0 ? product.salePrice : product.retailPrice) || 0) * quantity)}`}
               </button>
               {/* <div className="w-full flex flex-col sm:flex-row gap-[15px]">
                 {product.salePrice >= 10 && (
@@ -312,14 +334,7 @@ function ProductDetailPage() {
           </div>
         </div>
         <div className='flex-col items-start mt-[40px] w-full'>
-          <div className='pb-[15px]'>
-            <span className='font-medium text-lg'>Description</span>
-          </div>
-          <p className='font-content text-gray-600'>
-            {product.detailedDescription || product.shortDescription}
-          </p>
-          <ProductSpecs product={product} />
-          <BentoProductGrid product={product} />
+          <ProductDetails product={product} />
         </div>
 
         {/* all Products */}
@@ -424,7 +439,16 @@ function ProductDetailPage() {
                       </div>
                       <div className="p-3">
                         <h3 className="font-medium text-sm sm:text-base truncate">{rp.name}</h3>
-                        <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${rp.salePrice > 0 ? rp.salePrice : rp.retailPrice}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-purple-600 text-sm sm:text-base">
+                            {formatGBP(rp?.salePrice > 0 ? rp.salePrice : rp.retailPrice)}
+                          </span>
+                          {rp?.salePrice > 0 && rp?.retailPrice ? (
+                            <span className="text-xs text-red-500 line-through">
+                              {formatGBP(rp.retailPrice)}
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
                           {Array.from({ length: 5 }, (_, i) => {
                             const full = Math.floor(rp.rating || 0);
@@ -473,7 +497,16 @@ function ProductDetailPage() {
                       </div>
                       <div className="p-3">
                         <h3 className="font-medium text-sm sm:text-base truncate">{rp.name}</h3>
-                        <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${rp.salePrice > 0 ? rp.salePrice : rp.retailPrice}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-purple-600 text-sm sm:text-base">
+                            {formatGBP(rp?.salePrice > 0 ? rp.salePrice : rp.retailPrice)}
+                          </span>
+                          {rp?.salePrice > 0 && rp?.retailPrice ? (
+                            <span className="text-xs text-red-500 line-through">
+                              {formatGBP(rp.retailPrice)}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </CardContent>
                   </Link>

@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { Info, Hash, Package, Ruler, Truck } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 function formatDimensions(dimensions) {
   if (!dimensions || typeof dimensions !== "object") return null;
@@ -14,19 +16,15 @@ function formatDimensions(dimensions) {
   return `${safe[0]} × ${safe[1]} × ${safe[2]}`;
 }
 
-function Row({ id, label, children }) {
-  const [open, setOpen] = React.useState(false);
+function Row({ id, label, icon: Icon, children, className = "" }) {
   return (
-    <div>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span aria-hidden="true">{open ? "−" : "+"}</span> {label}
-      </button>
-      <div id={id} role="region" hidden={!open}>
+    <div role="listitem" className={`border rounded-md p-3 ${className}`}>
+      <div id={`${id}-label`} className="flex items-center gap-2">
+        {Icon ? <Icon aria-hidden="true" /> : null}
+        <strong>{label}</strong>
+      </div>
+      <Separator className="my-2" />
+      <div aria-labelledby={`${id}-label`} className="text-sm">
         {children}
       </div>
     </div>
@@ -45,29 +43,29 @@ export default function ProductDetails({ product }) {
 
   const rows = [
     (shortDescription || detailedDescription) && (
-      <Row key="desc" id="spec-desc" label="Description">
-        {shortDescription && <p>{shortDescription}</p>}
-        {detailedDescription && <p>{detailedDescription}</p>}
+      <Row key="desc" id="spec-desc" label="Description" icon={Info} className="sm:col-span-2 lg:col-span-3">
+        {shortDescription ? <p>{shortDescription}</p> : null}
+        {detailedDescription ? <p>{detailedDescription}</p> : null}
       </Row>
     ),
     sku && (
-      <Row key="sku" id="spec-sku" label="SKU">
+      <Row key="sku" id="spec-sku" label="SKU" icon={Hash}>
         <p>{sku}</p>
       </Row>
     ),
     (weight !== null && weight !== "") && (
-      <Row key="weight" id="spec-weight" label="Weight">
+      <Row key="weight" id="spec-weight" label="Weight" icon={Package}>
         <p>{weight}</p>
       </Row>
     ),
     dimensions && (
-      <Row key="dimensions" id="spec-dimensions" label="Dimensions">
+      <Row key="dimensions" id="spec-dimensions" label="Dimensions" icon={Ruler}>
         <p>{dimensions}</p>
       </Row>
     ),
     shippingClass && (
-      <Row key="shipping" id="spec-shipping" label="Shipping Class">
-        <p className="capitalize">{shippingClass}</p>
+      <Row key="shipping" id="spec-shipping" label="Shipping Class" icon={Truck}>
+        <p>{shippingClass}</p>
       </Row>
     ),
   ].filter(Boolean);
@@ -76,8 +74,10 @@ export default function ProductDetails({ product }) {
 
   return (
     <section aria-labelledby="specs-heading">
-      <h2 id="specs-heading">View Product Details</h2>
-      <div>{rows}</div>
+      <h2 id="specs-heading">Product Details</h2>
+      <div role="list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {rows}
+      </div>
     </section>
   );
 }
