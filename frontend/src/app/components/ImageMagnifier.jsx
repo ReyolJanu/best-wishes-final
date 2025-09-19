@@ -10,6 +10,7 @@ export default function ImageMagnifier({
   zoomScale = 2.5,
   previewWidth = 320,
   previewHeight = 320,
+  showPreview = true,
   onError,
 }) {
   const containerRef = React.useRef(null);
@@ -22,16 +23,14 @@ export default function ImageMagnifier({
     const c = containerRef.current;
     const img = imgRef.current;
     if (!c || !img) return;
-    const rect = c.getBoundingClientRect();
-    const cw = rect.width;
-    const ch = rect.height;
-    const iw = img.naturalWidth || cw;
-    const ih = img.naturalHeight || ch;
-    const scale = Math.min(cw / iw, ch / ih);
-    const dw = iw * scale; // displayed image width
-    const dh = ih * scale; // displayed image height
-    const ox = (cw - dw) / 2; // x offset inside container (object-contain)
-    const oy = (ch - dh) / 2; // y offset
+    const cRect = c.getBoundingClientRect();
+    const iRect = img.getBoundingClientRect();
+    const cw = cRect.width;
+    const ch = cRect.height || iRect.height; // fallback to image if container has no explicit height
+    const dw = iRect.width;
+    const dh = iRect.height;
+    const ox = iRect.left - cRect.left;
+    const oy = iRect.top - cRect.top;
     setDisplayDims({ cw, ch, dw, dh, ox, oy });
   }, []);
 
@@ -132,14 +131,14 @@ export default function ImageMagnifier({
           ref={imgRef}
           src={src}
           alt={alt}
-          className="w-full h-full object-contain"
+          className="w-full h-auto object-contain"
           onLoad={computeDisplay}
           onError={onError}
           draggable={false}
         />
         {show && <div style={lensZoomStyle} />}
       </div>
-      {show && (
+      {show && showPreview && (
         <div className="mt-3">
           <div
             aria-label="Zoom preview"
