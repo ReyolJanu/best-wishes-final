@@ -34,6 +34,10 @@ function ProductDetailPage() {
   const [mainImageError, setMainImageError] = useState(false);
   const [thumbnailErrors, setThumbnailErrors] = useState({});
   const [productImageErrors, setProductImageErrors] = useState({});
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [randomProducts, setRandomProducts] = useState([]);
+  const [randomLoading, setRandomLoading] = useState(false);
   const router = useRouter();
 
 
@@ -82,6 +86,52 @@ function ProductDetailPage() {
   useEffect(() => {
     dispatch(getProducts());
   }, [dispatch])
+
+  // Fetch related products by same main category
+  useEffect(() => {
+    const fetchRelated = async () => {
+      if (!product?.mainCategory) return;
+      try {
+        setRelatedLoading(true);
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/products?category=${encodeURIComponent(product.mainCategory)}&limit=8&page=1`;
+        const res = await axios.get(url);
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const items = res.data.data.filter((p) => p._id !== product._id);
+          setRelatedProducts(items);
+        } else {
+          setRelatedProducts([]);
+        }
+      } catch (e) {
+        setRelatedProducts([]);
+        console.error('Failed to fetch related products:', e);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    fetchRelated();
+  }, [product?.mainCategory, product?._id]);
+
+  // Fetch a small random sample from all products (default 2)
+  useEffect(() => {
+    const fetchRandom = async () => {
+      try {
+        setRandomLoading(true);
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/random?limit=2`);
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setRandomProducts(res.data.data);
+        } else {
+          setRandomProducts([]);
+        }
+      } catch (e) {
+        console.error('Failed to fetch random products:', e);
+        setRandomProducts([]);
+      } finally {
+        setRandomLoading(false);
+      }
+    };
+    fetchRandom();
+  }, []);
 
   // Get the main product image
   const getMainImage = () => {
@@ -146,11 +196,11 @@ function ProductDetailPage() {
         <div className='w-full flex flex-col lg:flex-row h-auto mt-[20px]'>
           {/* Left Section - Image & Description */}
           <div className='flex-col justify-center w-full lg:w-[60%]'>
-            <div className='w-full h-[300px] sm:h-[400px] md:h-[500px] bg-gray-300 rounded-[10px] overflow-hidden border-1 border-[#D9D9D9]/50'>
+            <div className='w-full h-[300px] sm:h-[400px] md:h-[500px] bg-gray-100 rounded-[10px] overflow-hidden border-1 border-[#D9D9D9]/50'>
               <img
                 src={getMainImage()}
                 alt={product.name}
-                className="w-full h-full object-cover rounded-[10px]"
+                className="w-full h-full object-contain object-center rounded-[10px]"
                 onError={() => {
                   if (!mainImageError) setMainImageError(true);
                 }}
@@ -336,6 +386,96 @@ function ProductDetailPage() {
           <p className="text-red-500">Server currently busy!</p>
         )}
       </div> */}
+
+        {/* Related Products */}
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Related Products</h2>
+            {product?.mainCategory && (
+              <span className="text-sm text-gray-500">Category: {product.mainCategory}</span>
+            )}
+          </div>
+          {relatedLoading ? (
+            <div className="col-span-full text-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="mt-3 text-gray-600">Loading related products...</p>
+            </div>
+          ) : relatedProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {relatedProducts.map((rp) => {
+                const imgSrc = rp?.images?.[0]?.url || '/placeholder.svg';
+                return (
+                  <Link key={rp._id} href={`/productDetail/${rp._id}`} className="block group">
+                    <CardContent className="p-0 border-1 border-[#D9D9D9]/50 rounded-[10px] overflow-hidden">
+                      <div className="relative bg-gray-50">
+                        <Image
+                          src={imgSrc}
+                          alt={rp.name}
+                          width={200}
+                          height={200}
+                          className="w-full aspect-square object-cover group-hover:scale-[1.02] transition-transform"
+                        />
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm sm:text-base truncate">{rp.name}</h3>
+                        <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${rp.salePrice > 0 ? rp.salePrice : rp.retailPrice}</p>
+                        <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
+                          {Array.from({ length: 5 }, (_, i) => {
+                            const full = Math.floor(rp.rating || 0);
+                            const hasHalf = (rp.rating || 0) - full >= 0.5;
+                            if (i < full) return <AiFillStar key={i} />;
+                            if (i === full && hasHalf) return <AiTwotoneStar key={i} />;
+                            return <AiOutlineStar key={i} />;
+                          })}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-600">No related products found.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Random Picks (Default small sample) */}
+        <div className="mt-10">
+          <h2 className="text-lg font-semibold mb-4">You May Also Like</h2>
+          {randomLoading ? (
+            <div className="col-span-full text-center py-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="mt-3 text-gray-600">Loading suggestions...</p>
+            </div>
+          ) : randomProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 gap-6">
+              {randomProducts.map((rp) => {
+                const imgSrc = rp?.images?.[0]?.url || '/placeholder.svg';
+                return (
+                  <Link key={rp._id} href={`/productDetail/${rp._id}`} className="block group">
+                    <CardContent className="p-0 border-1 border-[#D9D9D9]/50 rounded-[10px] overflow-hidden">
+                      <div className="relative bg-gray-50">
+                        <Image
+                          src={imgSrc}
+                          alt={rp.name}
+                          width={200}
+                          height={200}
+                          className="w-full aspect-square object-cover group-hover:scale-[1.02] transition-transform"
+                        />
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm sm:text-base truncate">{rp.name}</h3>
+                        <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${rp.salePrice > 0 ? rp.salePrice : rp.retailPrice}</p>
+                      </div>
+                    </CardContent>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
 
         <div className="mt-[50px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 ">
           {allProducts && allProducts.length > 0 ? (

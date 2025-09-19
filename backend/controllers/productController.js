@@ -101,6 +101,29 @@
 const Product = require("../models/Product");
 const { validationResult } = require("express-validator");
 
+// Get N random products (optionally within a category)
+exports.getRandomProducts = async (req, res) => {
+  try {
+    let limit = parseInt(req.query.limit, 10);
+    if (Number.isNaN(limit) || limit <= 0) limit = 2;
+    if (limit > 20) limit = 20; // safety cap
+
+    const match = {};
+    const { category, status } = req.query;
+    if (category) match.mainCategory = { $regex: `^${category}$`, $options: 'i' };
+    if (status) match.status = status;
+
+    const pipeline = [];
+    if (Object.keys(match).length > 0) pipeline.push({ $match: match });
+    pipeline.push({ $sample: { size: limit } });
+
+    const products = await Product.aggregate(pipeline);
+    return res.json({ success: true, data: products });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Error fetching random products', error: error.message });
+  }
+};
+
 exports.getAllProducts = async (req, res) => {
   try {
     const {
