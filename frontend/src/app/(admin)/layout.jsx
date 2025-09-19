@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { User, Settings, LogOut, RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
+import NotificationDropdown from '../../components/NotificationDropdown';
 
 export default function RootLayout({ children }) {
   const [showWarning, setShowWarning] = useState(false);
@@ -83,6 +84,9 @@ export default function RootLayout({ children }) {
 
               {/* Admin Profile Section */}
               <div className="flex items-center space-x-4">
+                {/* Notifications */}
+                <NotificationDropdown />
+                
                 {/* Refresh Button */}
               <button
                 onClick={handleRefresh}

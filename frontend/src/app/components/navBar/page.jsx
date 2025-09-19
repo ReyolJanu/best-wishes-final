@@ -14,6 +14,7 @@ import ReminderGift from '../../modal/reminder/ReminderModal';
 import { Heart } from 'lucide-react';
 import { clearCart } from '@/app/slices/cartSlice';
 import { clearWishlist } from '@/app/slices/wishlistSlice';
+import NotificationDropdown from '../../../components/NotificationDropdown';
 
 function Navbar() {
   const { user } = useSelector((state) => state.userState);
@@ -192,6 +193,13 @@ function Navbar() {
                     )}
                   </div>
                 </li>
+
+                {/* Notifications - Only show for logged in users */}
+                {user && (
+                  <li>
+                    <NotificationDropdown />
+                  </li>
+                )}
 
                 {/* User */}
                 <li className="relative cursor-pointer">

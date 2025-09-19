@@ -58,7 +58,7 @@ export function OrderManagementSystem() {
   const [orders, setOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [activeTab, setActiveTab] = useState("pending")
+  const [activeTab, setActiveTab] = useState("accepted")
   const [expandedOrders, setExpandedOrders] = useState([])
   const [internalNotes, setInternalNotes] = useState({})
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -74,7 +74,6 @@ export function OrderManagementSystem() {
         order.items.some((item) => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))) ?? false
 
     const matchesTab =
-      (activeTab === "pending" && order.status === "pending") ||
       (activeTab === "accepted" && order.status === "processing") ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
@@ -1154,8 +1153,7 @@ export function OrderManagementSystem() {
 
             {/* Enhanced Order Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid grid-cols-5 gap-x-2 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
-                <TabsTrigger value="pending" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">Pending Orders</TabsTrigger>
+              <TabsList className="grid grid-cols-4 gap-x-2 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
                 <TabsTrigger value="accepted" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Processing</TabsTrigger>
                 <TabsTrigger value="packed" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">Packing</TabsTrigger>
                 <TabsTrigger value="delivery" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Ready for Delivery</TabsTrigger>

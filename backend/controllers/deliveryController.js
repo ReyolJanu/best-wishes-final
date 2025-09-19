@@ -2,6 +2,9 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const SurpriseGift = require('../models/SurpriseGift');
 
+const { createOrderStatusNotification } = require('./notificationController');
+
+
 // Get all orders for delivery staff management
 exports.getAllOrders = async (req, res) => {
   try {
@@ -107,6 +110,23 @@ exports.updateOrderStatus = async (req, res) => {
       .populate('user', 'firstName lastName email phone address')
       .populate('items.product', 'name images salePrice retailPrice')
       .populate('updatedBy', 'firstName lastName');
+
+    // Send notification for delivered orders
+    if (status === 'Delivered') {
+      try {
+        await createOrderStatusNotification(
+          order.user,
+          order._id,
+          'delivered',
+          updatedOrder.user?.email,
+          `${updatedOrder.user?.firstName} ${updatedOrder.user?.lastName}`.trim(),
+          req
+        );
+      } catch (notificationError) {
+        console.error('Error creating notification for delivery:', notificationError);
+        // Don't fail the main operation if notification fails
+      }
+    }
 
     res.status(200).json({
       success: true,

@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
+const { createOrderStatusNotification } = require('./notificationController');
 
 // Get order history for logged-in user
 exports.getUserOrderHistory = async (req, res) => {
@@ -40,6 +41,21 @@ exports.createOrder = async (req, res) => {
       status: status || 'Pending',
       orderedAt: new Date(),
     });
+
+    // Create notification for order creation
+    try {
+      await createOrderStatusNotification(
+        req.user._id,
+        order._id,
+        'pending',
+        req.user?.email,
+        `${req.user?.firstName} ${req.user?.lastName}`.trim(),
+        req
+      );
+    } catch (notificationError) {
+      console.error('Error creating notification for order creation:', notificationError);
+      // Don't fail the main operation if notification fails
+    }
 
     res.status(201).json({ success: true, order });
   } catch (err) {
@@ -94,30 +110,19 @@ exports.acceptOrder = async (req, res) => {
 
     await order.save();
 
-    // Send notification to user
-    const notification = new Notification({
-      user: order.user._id,
-      type: 'order_update',
-      title: 'Order Accepted',
-      message: `Your order #${order._id.toString().slice(-6)} has been accepted and is now being processed.`,
-      data: { orderId: order._id, status: 'Processing' }
-    });
-    await notification.save();
-
-    // Send email to user
-    if (order.user && order.user.email) {
-      await sendEmail({
-        to: order.user.email,
-        subject: 'Order Accepted - Best Wishes',
-        text: `Dear ${order.user.name || 'Customer'},\n\nYour order #${order._id.toString().slice(-6)} has been accepted and is now being processed.\n\nThank you for choosing Best Wishes!`,
-        html: `
-          <h2>Order Accepted!</h2>
-          <p>Dear ${order.user.name || 'Customer'},</p>
-          <p>Your order <strong>#${order._id.toString().slice(-6)}</strong> has been accepted and is now being processed.</p>
-          <p>We'll keep you updated on the progress of your order.</p>
-          <p>Thank you for choosing Best Wishes!</p>
-        `
-      });
+    // Create notification and send email
+    try {
+      await createOrderStatusNotification(
+        order.user._id,
+        order._id,
+        'processing',
+        order.user?.email,
+        order.user?.name || `${order.user?.firstName} ${order.user?.lastName}`.trim(),
+        req
+      );
+    } catch (notificationError) {
+      console.error('Error creating notification for order acceptance:', notificationError);
+      // Don't fail the main operation if notification fails
     }
 
     res.status(200).json({
@@ -141,7 +146,7 @@ exports.updateOrderToPacking = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Order ID is required' });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('user', 'email firstName lastName');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -160,6 +165,21 @@ exports.updateOrderToPacking = async (req, res) => {
 
     await order.save();
 
+    // Create notification and send email
+    try {
+      await createOrderStatusNotification(
+        order.user._id,
+        order._id,
+        'packing',
+        order.user?.email,
+        order.user?.name || `${order.user?.firstName} ${order.user?.lastName}`.trim(),
+        req
+      );
+    } catch (notificationError) {
+      console.error('Error creating notification for packing update:', notificationError);
+      // Don't fail the main operation if notification fails
+    }
+
     res.status(200).json({ success: true, message: 'Order status updated to Packing', order });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
@@ -177,7 +197,7 @@ exports.updateOrderToShipped = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Order ID is required' });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('user', 'email firstName lastName');
     console.log('Found order:', order ? `ID: ${order._id}, Status: ${order.status}` : 'null'); // Debug log
 
     if (!order) {
@@ -198,6 +218,21 @@ exports.updateOrderToShipped = async (req, res) => {
 
     await order.save();
 
+    // Create notification and send email
+    try {
+      await createOrderStatusNotification(
+        order.user._id,
+        order._id,
+        'shipped',
+        order.user?.email,
+        order.user?.name || `${order.user?.firstName} ${order.user?.lastName}`.trim(),
+        req
+      );
+    } catch (notificationError) {
+      console.error('Error creating notification for shipped update:', notificationError);
+      // Don't fail the main operation if notification fails
+    }
+
     res.status(200).json({ success: true, message: 'Order status updated to Shipped', order });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
@@ -215,7 +250,7 @@ exports.updateOrderToDelivered = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Order ID is required' });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('user', 'email firstName lastName');
     console.log('Found order:', order ? `ID: ${order._id}, Status: ${order.status}` : 'null'); // Debug log
 
     if (!order) {
@@ -235,6 +270,21 @@ exports.updateOrderToDelivered = async (req, res) => {
     });
 
     await order.save();
+
+    // Create notification and send email
+    try {
+      await createOrderStatusNotification(
+        order.user._id,
+        order._id,
+        'delivered',
+        order.user?.email,
+        order.user?.name || `${order.user?.firstName} ${order.user?.lastName}`.trim(),
+        req
+      );
+    } catch (notificationError) {
+      console.error('Error creating notification for delivered update:', notificationError);
+      // Don't fail the main operation if notification fails
+    }
 
     res.status(200).json({ success: true, message: 'Order status updated to Delivered', order });
   } catch (err) {

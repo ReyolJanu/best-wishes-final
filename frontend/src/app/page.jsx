@@ -29,7 +29,7 @@ const images = ["/1.jpg", "/2.jpg", "/3.jpg"]
 
 export default function FancyCarousel() {
   const { allProducts } = useSelector((state) => state.productsState)
-  const { categories } = useSelector((state) => state.categoriesState)
+  const { categories = [] } = useSelector((state) => state.categoriesState || {})
   const { isAuthenticated } = useSelector((state) => state.userState)
   const dispatch = useDispatch()
 
@@ -259,8 +259,10 @@ export default function FancyCarousel() {
   };
 
   // Ensure unique categories
-  const uniqueCategories = Array.from(new Set(categories.map(category => category.name)))
-    .map(name => categories.find(category => category.name === name));
+  const uniqueCategories = categories && Array.isArray(categories) 
+    ? Array.from(new Set(categories.map(category => category.name)))
+        .map(name => categories.find(category => category.name === name))
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-50">

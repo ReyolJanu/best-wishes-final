@@ -2,6 +2,7 @@ import './globals.css';
 import ReduxProvider from './ReduxProvider';
 import { Toaster } from 'sonner';
 import UserProfileHydrator from './components/UserProfileHydrator';
+import NotificationWrapper from '../components/NotificationWrapper';
 
 export const metadata = {
   title: 'Best Wishes',
@@ -14,8 +15,10 @@ export default function RootLayout({ children }) {
       <body className="antialiased" suppressHydrationWarning={true}>
         <ReduxProvider>
           <UserProfileHydrator />
-          {children}
-          <Toaster position="top-center" richColors />
+          <NotificationWrapper>
+            {children}
+            <Toaster position="top-center" richColors />
+          </NotificationWrapper>
         </ReduxProvider>
       </body>
     </html>
