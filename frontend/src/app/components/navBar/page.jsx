@@ -15,6 +15,21 @@ import { Heart } from 'lucide-react';
 import { clearCart } from '@/app/slices/cartSlice';
 import { clearWishlist } from '@/app/slices/wishlistSlice';
 import NotificationDropdown from '../../../components/NotificationDropdown';
+import { 
+  FaServicestack, 
+  FaGift, 
+  FaInfoCircle, 
+  FaUser, 
+  FaHistory, 
+  FaUsers, 
+  FaSignOutAlt, 
+  FaSignInAlt,
+  FaBell,
+  FaChevronDown,
+  FaChevronRight
+} from 'react-icons/fa';
+import { BiCustomize } from 'react-icons/bi';
+import { MdCardGiftcard } from 'react-icons/md';
 
 function Navbar() {
   const { user } = useSelector((state) => state.userState);
@@ -28,6 +43,7 @@ function Navbar() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const searchRef = useRef(null);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -43,6 +59,11 @@ function Navbar() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Reset image error when user changes
+  useEffect(() => {
+    setImageError(false);
+  }, [user?.profileImage]);
 
   const handleSearch = async (query) => {
     setSearchQuery(query);
@@ -228,8 +249,19 @@ function Navbar() {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center">
-              <div className="cursor-pointer hover:text-[#822BE2] transition-colors mr-4" onClick={() => handleNavigation('/user/checkout')}>
+            <div className="md:hidden flex items-center space-x-3">
+              {/* Wishlist */}
+              <div className="cursor-pointer hover:text-[#822BE2] transition-colors" onClick={() => handleNavigation('/user/wishlist')}>
+                <div className="relative">
+                  <Heart size={22} className="text-[#822BE2]" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs rounded-full px-1.5 py-0.5">{wishlistCount}</span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Cart */}
+              <div className="cursor-pointer hover:text-[#822BE2] transition-colors" onClick={() => handleNavigation('/user/checkout')}>
                 <div className="relative">
                   <MdOutlineShoppingCart size={24} />
                   {cartCount > 0 && (
@@ -237,8 +269,13 @@ function Navbar() {
                   )}
                 </div>
               </div>
-              <button onClick={toggleMenu} className="p-2 hover:bg-gray-100 rounded-md transition-colors">
-                {isMenuOpen ? <HiX size={26} className="text-gray-600" /> : <HiMenu size={26} className="text-gray-600" />}
+              
+              {/* Menu Button */}
+              <button 
+                onClick={toggleMenu} 
+                className={`p-2 rounded-lg transition-all duration-300 ${isMenuOpen ? 'bg-gray-600 text-white' : 'hover:bg-gray-100'}`}
+              >
+                {isMenuOpen ? <HiX size={20} className="text-white" /> : <HiMenu size={20} className="text-gray-600" />}
               </button>
             </div>
           </div>
@@ -285,41 +322,186 @@ function Navbar() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="absolute w-full md:hidden bg-white border-t border-gray-200 shadow-lg">
-            <div className="px-4 py-4 space-y-4 text-sm">
-              <div className="space-y-3">
-                <div onClick={() => handleNavigation('/services')} className="cursor-pointer hover:text-[#822BE2] transition-colors py-2">Services</div>
+          <div className="fixed inset-0 top-[80px] md:hidden bg-white/50 backdrop-blur-lg shadow-2xl z-50 overflow-y-auto animate-in slide-in-from-top duration-300">
+            <div className="px-6 py-6">
+              {/* User Section */}
+              {user && (
+                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-6 border border-white/30 shadow-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gray-800/30 rounded-full flex items-center justify-center overflow-hidden">
+                      {user.profileImage && !imageError ? (
+                        <Image
+                          src={user.profileImage}
+                          alt={`${user.firstName}'s profile`}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                          onError={() => setImageError(true)}
+                        />
+                      ) : (
+                        <FaUser className="text-gray-700 text-lg" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-gray-800 font-semibold text-lg">Welcome back!</p>
+                      <p className="text-gray-600 text-sm">{user.firstName} {user.lastName}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {/* Services */}
+                <div 
+                  onClick={() => handleNavigation('/services')} 
+                  className="flex items-center space-x-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 hover:bg-white/30 transition-all duration-300 cursor-pointer border border-white/30 shadow-lg"
+                >
+                  <div className="w-10 h-10 bg-blue-500/30 rounded-lg flex items-center justify-center">
+                    <FaServicestack className="text-blue-600 text-lg" />
+                  </div>
+                  <span className="text-gray-800 font-medium text-lg">Services</span>
+                  <FaChevronRight className="text-gray-600 ml-auto" />
+                </div>
 
                 {/* Gift Combo */}
-                <div className="cursor-pointer" onClick={() => setGiftDropdownOpen(!giftDropdownOpen)}>
-                  <div className="hover:text-[#822BE2] transition-colors py-2 flex justify-between items-center">
-                    <span>Gift Combo</span>
-                    <svg className={`w-4 h-4 transition-transform ${giftDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 shadow-lg overflow-hidden">
+                  <div 
+                    className="flex items-center space-x-4 p-4 hover:bg-white/30 transition-all duration-300 cursor-pointer"
+                    onClick={() => setGiftDropdownOpen(!giftDropdownOpen)}
+                  >
+                    <div className="w-10 h-10 bg-purple-500/30 rounded-lg flex items-center justify-center">
+                      <FaGift className="text-purple-600 text-lg" />
+                    </div>
+                    <span className="text-gray-800 font-medium text-lg">Gift Combo</span>
+                    <FaChevronDown className={`text-gray-600 ml-auto transition-transform duration-300 ${giftDropdownOpen ? 'rotate-180' : ''}`} />
                   </div>
+                  
                   {giftDropdownOpen && (
-                    <div className="ml-4 mt-2 space-y-2 border-l-2 border-gray-100 pl-3">
-                      <div className="hover:text-[#822BE2] transition-colors py-1.5" onClick={() => handleNavigation('/surprisegift')}>Surprise Gift Delivery</div>
-                      <div className="hover:text-[#822BE2] transition-colors py-1.5" onClick={() => handleNavigation('/user/customizegifts')}>Customizable Gift</div>
-                      <div className="hover:text-[#822BE2] transition-colors py-1.5" onClick={openModal}>Reminder Gift</div>
+                    <div className="bg-white/10 border-t border-white/20 animate-in slide-in-from-top duration-300">
+                      <div 
+                        className="flex items-center space-x-4 p-4 pl-8 hover:bg-white/20 transition-all duration-300 cursor-pointer"
+                        onClick={() => handleNavigation('/surprisegift')}
+                      >
+                        <MdCardGiftcard className="text-gray-600 text-lg" />
+                        <span className="text-gray-700 font-medium">Surprise Gift Delivery</span>
+                      </div>
+                      <div 
+                        className="flex items-center space-x-4 p-4 pl-8 hover:bg-white/20 transition-all duration-300 cursor-pointer"
+                        onClick={() => handleNavigation('/user/customizegifts')}
+                      >
+                        <BiCustomize className="text-gray-600 text-lg" />
+                        <span className="text-gray-700 font-medium">Customizable Gift</span>
+                      </div>
+                      <div 
+                        className="flex items-center space-x-4 p-4 pl-8 hover:bg-white/20 transition-all duration-300 cursor-pointer"
+                        onClick={openModal}
+                      >
+                        <FaBell className="text-gray-600 text-lg" />
+                        <span className="text-gray-700 font-medium">Reminder Gift</span>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="cursor-pointer hover:text-[#822BE2] transition-colors py-2">About Us</div>
+                {/* About Us */}
+                <div 
+                  onClick={() => handleNavigation('/aboutUs')} 
+                  className="flex items-center space-x-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 hover:bg-white/30 transition-all duration-300 cursor-pointer border border-white/30 shadow-lg"
+                >
+                  <div className="w-10 h-10 bg-green-500/30 rounded-lg flex items-center justify-center">
+                    <FaInfoCircle className="text-green-600 text-lg" />
+                  </div>
+                  <span className="text-gray-800 font-medium text-lg">About Us</span>
+                  <FaChevronRight className="text-gray-600 ml-auto" />
+                </div>
+
+                {/* Wishlist with count */}
+                <div 
+                  onClick={() => handleNavigation('/user/wishlist')} 
+                  className="flex items-center space-x-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 hover:bg-white/30 transition-all duration-300 cursor-pointer border border-white/30 shadow-lg"
+                >
+                  <div className="w-10 h-10 bg-pink-500/30 rounded-lg flex items-center justify-center relative">
+                    <Heart className="text-pink-600 text-lg" />
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                        {wishlistCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-gray-800 font-medium text-lg">Wishlist</span>
+                  <FaChevronRight className="text-gray-600 ml-auto" />
+                </div>
 
                 {user ? (
                   <>
-                    <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/user/profile')}>Profile</div>
-                    <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/user/wishlist')}>Wishlists</div>
-                    <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/user/history')}>History</div>
-                    <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/dashboard/collaborative-purchases')}>Collaborative Purchases</div>
-                    <div className="text-red-500 hover:text-red-600 transition-colors py-2" onClick={logoutHandler}>Logout</div>
+                    {/* Profile */}
+                    <div 
+                      onClick={() => handleNavigation('/user/profile')} 
+                      className="flex items-center space-x-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 hover:bg-white/30 transition-all duration-300 cursor-pointer border border-white/30 shadow-lg"
+                    >
+                      <div className="w-10 h-10 bg-indigo-500/30 rounded-lg flex items-center justify-center">
+                        <FaUser className="text-indigo-600 text-lg" />
+                      </div>
+                      <span className="text-gray-800 font-medium text-lg">Profile</span>
+                      <FaChevronRight className="text-gray-600 ml-auto" />
+                    </div>
+
+                    {/* History */}
+                    <div 
+                      onClick={() => handleNavigation('/user/history')} 
+                      className="flex items-center space-x-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 hover:bg-white/30 transition-all duration-300 cursor-pointer border border-white/30 shadow-lg"
+                    >
+                      <div className="w-10 h-10 bg-yellow-500/30 rounded-lg flex items-center justify-center">
+                        <FaHistory className="text-yellow-600 text-lg" />
+                      </div>
+                      <span className="text-gray-800 font-medium text-lg">Order History</span>
+                      <FaChevronRight className="text-gray-600 ml-auto" />
+                    </div>
+
+                    {/* Collaborative Purchases */}
+                    <div 
+                      onClick={() => handleNavigation('/dashboard/collaborative-purchases')} 
+                      className="flex items-center space-x-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 hover:bg-white/30 transition-all duration-300 cursor-pointer border border-white/30 shadow-lg"
+                    >
+                      <div className="w-10 h-10 bg-teal-500/30 rounded-lg flex items-center justify-center">
+                        <FaUsers className="text-teal-600 text-lg" />
+                      </div>
+                      <span className="text-gray-800 font-medium text-lg">Collaborative Purchases</span>
+                      <FaChevronRight className="text-gray-600 ml-auto" />
+                    </div>
+
+                    {/* Logout */}
+                    <div 
+                      onClick={logoutHandler} 
+                      className="flex items-center space-x-4 bg-red-500/20 backdrop-blur-sm rounded-xl p-4 hover:bg-red-500/30 transition-all duration-300 cursor-pointer border border-red-400/40 shadow-lg mt-6"
+                    >
+                      <div className="w-10 h-10 bg-red-500/30 rounded-lg flex items-center justify-center">
+                        <FaSignOutAlt className="text-red-600 text-lg" />
+                      </div>
+                      <span className="text-red-700 font-medium text-lg">Logout</span>
+                      <FaChevronRight className="text-red-500 ml-auto" />
+                    </div>
                   </>
                 ) : (
-                  <div className="hover:text-[#822BE2] transition-colors py-2" onClick={() => handleNavigation('/login')}>Login</div>
+                  /* Login */
+                  <div 
+                    onClick={() => handleNavigation('/login')} 
+                    className="flex items-center space-x-4 bg-green-500/20 backdrop-blur-sm rounded-xl p-4 hover:bg-green-500/30 transition-all duration-300 cursor-pointer border border-green-400/40 shadow-lg mt-6"
+                  >
+                    <div className="w-10 h-10 bg-green-500/30 rounded-lg flex items-center justify-center">
+                      <FaSignInAlt className="text-green-600 text-lg" />
+                    </div>
+                    <span className="text-green-700 font-medium text-lg">Login</span>
+                    <FaChevronRight className="text-green-500 ml-auto" />
+                  </div>
                 )}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-8 pt-6 border-t border-gray-400/30">
+                <p className="text-gray-600 text-center text-sm">
+                  Made with ❤️ for amazing gifts
+                </p>
               </div>
             </div>
           </div>

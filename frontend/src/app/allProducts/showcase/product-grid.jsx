@@ -3,12 +3,17 @@
 import Image from "next/image"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSelector, useDispatch } from "react-redux"
 import { useLoading } from "../../hooks/useLoading"
 import Loader from "../../components/loader/page"
+import { addToCart } from "../../slices/cartSlice"
+import { toast } from 'sonner'
 
 export function ProductGrid({ products, limit }) {
   const router = useRouter()
+  const dispatch = useDispatch()
   const { loading, withLoading } = useLoading()
+  const { isAuthenticated } = useSelector((state) => state.userState)
   const [hoveredProduct, setHoveredProduct] = useState(null)
 
   // Apply limit if provided
@@ -23,9 +28,29 @@ export function ProductGrid({ products, limit }) {
 
   // Function to handle add to cart
   const handleAddToCart = (product) => {
-    console.log("Added to cart:", product)
-    // In a real app, this would dispatch an action to add the product to the cart
-    alert(`Added ${product.name} to cart!`)
+    // Check authentication from Redux store or localStorage as fallback
+    let isLoggedIn = isAuthenticated;
+    
+    // If Redux state doesn't have auth info, check localStorage (from main store persistence)
+    if (!isLoggedIn && typeof window !== 'undefined') {
+      try {
+        const persistedState = localStorage.getItem('persist:root');
+        if (persistedState) {
+          const parsed = JSON.parse(persistedState);
+          const userState = JSON.parse(parsed.userState || '{}');
+          isLoggedIn = userState.isAuthenticated === true;
+        }
+      } catch (error) {
+        console.log('Could not parse persisted state:', error);
+      }
+    }
+    
+    if (!isLoggedIn) {
+      toast.error('Please login to add to cart');
+      return;
+    }
+    dispatch(addToCart({ product, quantity: 1 }));
+    toast.success(`${product.name} added to cart!`);
   }
 
   // Function to handle buy now

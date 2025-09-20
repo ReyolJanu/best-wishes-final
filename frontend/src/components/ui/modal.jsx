@@ -16,7 +16,8 @@ export function Modal({
   confirmText = "Confirm",
   cancelText = "Cancel",
   showCancel = true,
-  children
+  children,
+  iconColor   // <-- NEW PROP
 }) {
   const [isVisible, setIsVisible] = useState(false)
 
@@ -32,23 +33,34 @@ export function Modal({
   if (!isVisible) return null
 
   const getIcon = () => {
+    const colorClass = iconColor || {   // fallback to default if not provided
+      success: "text-green-600",
+      warning: "text-yellow-600",
+      error: "text-red-600",
+      delete: "text-red-600",
+      edit: "text-blue-600",
+      confirm: "text-blue-600",
+      info: "text-purple-600",
+    }[type]
+  
     switch (type) {
       case "success":
-        return <CheckCircle className="w-8 h-8 text-green-600" />
+        return <CheckCircle className={`w-8 h-8 ${colorClass}`} />
       case "warning":
-        return <AlertTriangle className="w-8 h-8 text-yellow-600" />
+        return <AlertTriangle className={`w-8 h-8 ${colorClass}`} />
       case "error":
-        return <AlertTriangle className="w-8 h-8 text-red-600" />
+        return <AlertTriangle className={`w-8 h-8 ${colorClass}`} />
       case "delete":
-        return <Trash2 className="w-8 h-8 text-red-600" />
+        return <Trash2 className={`w-8 h-8 ${colorClass}`} />
       case "edit":
-        return <Edit className="w-8 h-8 text-blue-600" />
+        return <Edit className={`w-8 h-8 ${colorClass}`} />
       case "confirm":
-        return <Info className="w-8 h-8 text-blue-600" />
+        return <Info className={`w-8 h-8 ${colorClass}`} />
       default:
-        return <Info className="w-8 h-8 text-blue-600" />
+        return <Info className={`w-8 h-8 ${colorClass}`} />
     }
   }
+  
 
   const getButtonVariant = () => {
     switch (type) {

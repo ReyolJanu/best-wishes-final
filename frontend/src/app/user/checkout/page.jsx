@@ -56,11 +56,11 @@ export default function CheckoutPage() {
 
     return (
         <>
-            <div className='pl-[80px] pr-[80px] flex-col items-center'>
+            <div className='px-4 md:px-8 lg:px-16 xl:px-20 max-w-7xl mx-auto'>
                 <Navbar />
-                <div className='font-extra-large font-semibold mt-[15px]'>Cart ({cart.length})</div>
+                <div className='text-2xl md:text-3xl font-semibold mt-4 mb-6'>Cart ({cart.length})</div>
 
-                <div className='flex w-full mt-[15px]'>
+                <div className='flex flex-col lg:flex-row w-full mt-6 gap-6 min-h-[50vh]'>
                     {cart.length === 0 ? (
                         <div className="flex flex-1 min-h-[60vh] items-center justify-center">
                             <div className="flex flex-col items-center justify-center py-20">
@@ -74,26 +74,25 @@ export default function CheckoutPage() {
                         </div>
                     ) : (
                         <>
-                            <div className='flex-col w-[65%] items-center'>
+                            <div className='flex-col w-full lg:w-2/3 items-center space-y-6'>
                                 {cart.map((item) => (
-                                    <div key={item.productId} className='w-full flex justify-center mb-[30px]'>
-                                        <div className="relative w-[15%] ">
+                                    <div key={item.productId} className='w-full flex flex-col sm:flex-row justify-center bg-white p-4 rounded-lg shadow-sm border border-gray-100'>
+                                        <div className="relative w-full sm:w-32 h-32 mb-4 sm:mb-0 sm:mr-4">
                                             <Image
                                                 src={getProductImage(item.product)}
                                                 alt={item.product.name}
-                                                width={130}
-                                                height={120}
+                                                fill
                                                 className="rounded-lg object-cover"
                                                 onError={(e) => {
                                                   e.target.src = '/placeholder.svg';
                                                 }}
                                             />
                                         </div>
-                                        <div className='w-[40%] flex-col pl-[20px]'>
-                                            <p className='font-large'>{item.product.name}</p>
-                                            <p className='font-large font-semibold'>US ${item.product.price}</p>
-                                            <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
-                                                <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
+                                        <div className='flex-1 flex flex-col sm:flex-row gap-4'>
+                                            <div className='flex-1'>
+                                                <p className='text-lg font-medium mb-2'>{item.product.name}</p>
+                                                <p className='text-xl font-semibold text-[#822BE2] mb-2'>US ${item.product.price}</p>
+                                                <div className="flex text-yellow-400 text-sm">
                                                     {Array.from({ length: 5 }, (_, i) => {
                                                         const fullStars = Math.floor(item.product.rating || 0);
                                                         const hasHalfStar = (item.product.rating || 0) - fullStars >= 0.5;
@@ -107,93 +106,103 @@ export default function CheckoutPage() {
                                                     })}
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className='bg-[#D9D9D9] mr-[20px] w-[3px] rounded-full'></div>
-                                        <div className='w-[45%] flex-col'>
-                                            <div className='flex items-center space-x-[15px]'>
-                                                <p>Quantity</p>
-                                                <button
-                                                    className='w-8 h-8 flex justify-center rounded-[5px] bg-gray-300 text-white text-xl font-bold hover:bg-purple-200 hover:text-[#822BE2] hover:border-2 hover:border-[#822BE2] '
-                                                    onClick={() => handleDecrease(item.productId)}
-                                                >
-                                                    -
-                                                </button>
-                                                <span className='bg-white border-2 border-[#D9D9D9] w-[45px] h-[45px] rounded-[5px] flex justify-center items-center font-large'>{item.quantity}</span>
-                                                <button
-                                                    className='w-8 h-8 flex justify-center rounded-[5px] bg-gray-300 text-white text-xl font-bold hover:bg-purple-200 hover:text-[#822BE2] hover:border-2 hover:border-[#822BE2]'
-                                                    onClick={() => handleIncrease(item.productId)}
-                                                >
-                                                    +
-                                                </button>
-                                                <button className='border-2 border-red-500 rounded-full p-[5px] ml-[50px]' onClick={() => handleRemove(item.productId)}><RiDeleteBin6Line className='text-red-500' /></button>
-                                            </div>
-                                            <div className='flex space-x-[40px] pt-[20px]'>
-                                                <span>Price</span> <span className='font-large font-semibold'>US ${(item.product.price * item.quantity).toFixed(2)}</span>
+                                            <div className='flex flex-col sm:w-64 space-y-4'>
+                                                <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+                                                    <span className='text-sm font-medium'>Quantity:</span>
+                                                    <div className='flex items-center space-x-2'>
+                                                        <button
+                                                            className='w-8 h-8 flex justify-center items-center rounded bg-gray-300 text-gray-700 text-xl font-bold hover:bg-purple-200 hover:text-[#822BE2] hover:border-2 hover:border-[#822BE2] transition-all'
+                                                            onClick={() => handleDecrease(item.productId)}
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <span className='bg-white border-2 border-gray-200 w-12 h-8 rounded flex justify-center items-center font-medium'>{item.quantity}</span>
+                                                        <button
+                                                            className='w-8 h-8 flex justify-center items-center rounded bg-gray-300 text-gray-700 text-xl font-bold hover:bg-purple-200 hover:text-[#822BE2] hover:border-2 hover:border-[#822BE2] transition-all'
+                                                            onClick={() => handleIncrease(item.productId)}
+                                                        >
+                                                            +
+                                                        </button>
+                                                        <button 
+                                                            className='border-2 border-red-500 rounded-full p-2 ml-2 hover:bg-red-50 transition-all' 
+                                                            onClick={() => handleRemove(item.productId)}
+                                                        >
+                                                            <RiDeleteBin6Line className='text-red-500 text-lg' />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className='flex justify-between items-center pt-2 border-t border-gray-200'>
+                                                    <span className='text-sm font-medium'>Total:</span> 
+                                                    <span className='text-lg font-semibold text-[#822BE2]'>US ${(item.product.price * item.quantity).toFixed(2)}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                             {cart.length > 0 && (
-                                <div className="flex flex-col w-[35%]">
-                                    <div className='w-full p-5  border-2 border-[#D9D9D9] rounded-[10px]'>
+                                <div className="flex flex-col w-full lg:w-1/3 space-y-6">
+                                    <div className='w-full p-4 sm:p-6 border-2 border-gray-200 rounded-lg'>
                                         <h2 className="text-xl font-semibold text-gray-800 mb-4">Check Out</h2>
-                                        {/* <div className="flex justify-between px-5 py-[2px]">
-                                            <p className="text-[16px] text-[#5C5C5C]">Total Items</p>
-                                            <p className="text-[16px] font-semibold text-[#333333]">{cart.length}</p>
-                                        </div> */}
-                                        <div className="flex justify-between px-5 py-[2px]">
-                                            <p className="text-[16px] text-[#5C5C5C]">Shipping Fees</p>
-                                            <p className="text-[16px] font-semibold text-[#333333]">US $10</p>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm sm:text-base text-gray-600">Shipping Fees</p>
+                                                <p className="text-sm sm:text-base font-semibold text-gray-800">US $10</p>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm sm:text-base text-gray-600">Subtotal</p>
+                                                <p className="text-sm sm:text-base font-semibold text-gray-800">US ${total.toFixed(2)}</p>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between px-5 py-[2px]">
-                                            <p className="text-[16px] text-[#5C5C5C]">Subtotal</p>
-                                            <p className="text-[16px] font-semibold text-[#333333]">US ${total.toFixed(2)}</p>
-                                        </div>
-                                        <div className='px-5 mt-5'>
-                                            <button onClick={handleCheckout} className="h-[50px] w-full rounded-[5px] bg-[#822BE2] hover:bg-purple-200 hover:border-2 hover:border-[#822BE2] hover:text-[#822BE2] hover:cursor-pointer text-white font-bold">
+                                        <div className='mt-6'>
+                                            <button onClick={handleCheckout} className="h-12 w-full rounded-lg bg-[#822BE2] hover:bg-purple-200 hover:border-2 hover:border-[#822BE2] hover:text-[#822BE2] hover:cursor-pointer text-white font-bold text-lg transition-all duration-200">
                                                 Checkout US ${total.toFixed(2)}
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className='w-full p-5 flex-col border-2 border-[#D9D9D9] rounded-[10px] mt-[20px] mb-[50px]'>
+                                    <div className='w-full p-4 sm:p-6 border-2 border-gray-200 rounded-lg'>
                                         <h2 className="text-xl font-semibold text-gray-800 mb-4">Payer Information</h2>
-                                        <div className='flex justify-between w-full '>
-                                            <div className='flex-col w-50% '>
-                                                <p className='font-medium text-[#5C5C5C] px-5 py-[2px]'>payer name</p>
-                                                <p className='font-semibold text-[#822BE2] px-5 py-[2px] '>{user.firstName}</p>
+                                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'>
+                                            <div>
+                                                <p className='text-sm font-medium text-gray-600 mb-1'>First Name</p>
+                                                <p className='text-base font-semibold text-[#822BE2]'>{user.firstName}</p>
                                             </div>
-                                            <div className='flex-col w-50%  '>
-                                                <p className='font-medium text-[#5C5C5C] px-5 py-[2px]'>payer name</p>
-                                                <p className='font-semibold text-[#822BE2]  px-5 py-[2px]'>{user.lastName}</p>
+                                            <div>
+                                                <p className='text-sm font-medium text-gray-600 mb-1'>Last Name</p>
+                                                <p className='text-base font-semibold text-[#822BE2]'>{user.lastName}</p>
                                             </div>
                                         </div>
-                                        <div className='flex-col w-full  p-5'>
-                                            <p className='font-medium text-[#5C5C5C] py-[2px]'>Shipping Address</p>
-                                            <div className='w-full justify-center flex items-center border border-[#818181] mt-[10px] p-[10px] rounded-[5px]'>
+                                        
+                                        <div className='mb-6'>
+                                            <p className='text-sm font-medium text-gray-600 mb-2'>Shipping Address</p>
+                                            <div className='flex items-center border border-gray-300 rounded-lg p-3'>
                                                 <input
                                                     type='text'
                                                     placeholder='shipping address'
                                                     defaultValue={user.address}
-                                                    className='bg-transparent outline-none w-full placeholder:text-gray-600'
+                                                    className='bg-transparent outline-none flex-1 text-sm'
                                                 />
-                                                <button>
-                                                    <AiOutlineEdit className='text-[25px]' />
+                                                <button className='ml-2'>
+                                                    <AiOutlineEdit className='text-xl text-gray-600 hover:text-[#822BE2]' />
                                                 </button>
                                             </div>
                                         </div>
 
-                                        <div className='flex w-full  pl-5 pr-5 items-center justify-center'>
-                                            <button className='w-full flex justify-center items-center bg-[#822BE2] font-semibold h-[50px] rounded-[5px] text-white  hover:bg-purple-200 hover:border-2 hover:border-[#822BE2] hover:text-[#822BE2] hover:cursor-pointer'>Save Changes</button>
-                                        </div>
-                                        <h2 className="text-xl font-semibold text-gray-800 mb-4 mt-4">Payment Information</h2>
-                                        <p className='px-5 py-[2px]'>Shipping fee will be add based on your buying product and product will be delivered with in 7 daysReturnable with <a href='#'>Terms & Conditions</a></p>
-                                        <h2 className="text-xl font-semibold text-gray-800 mb-4 mt-4">Payment Option</h2>
-                                        <div className='flex gap-[10px] items-center px-5 py-[2px]'>
-                                            <FaCcVisa className='text-[50px] text-[#5C5C5C]' />
-                                            <FaCcPaypal className='text-[50px] text-[#5C5C5C]' />
-                                            <SiMastercard className='text-[50px] text-[#5C5C5C]' />
+                                        <button className='w-full bg-[#822BE2] font-semibold h-12 rounded-lg text-white hover:bg-purple-200 hover:border-2 hover:border-[#822BE2] hover:text-[#822BE2] transition-all duration-200 mb-6'>
+                                            Save Changes
+                                        </button>
+                                        
+                                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Payment Information</h2>
+                                        <p className='text-sm text-gray-600 mb-6 leading-relaxed'>
+                                            Shipping fee will be added based on your buying product and product will be delivered within 7 days. Returnable with <a href='#' className='text-[#822BE2] underline'>Terms & Conditions</a>
+                                        </p>
+                                        
+                                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Payment Options</h2>
+                                        <div className='flex gap-3 justify-start'>
+                                            <FaCcVisa className='text-4xl sm:text-5xl text-gray-500 hover:text-blue-600 transition-colors' />
+                                            <FaCcPaypal className='text-4xl sm:text-5xl text-gray-500 hover:text-blue-800 transition-colors' />
+                                            <SiMastercard className='text-4xl sm:text-5xl text-gray-500 hover:text-red-600 transition-colors' />
                                         </div>
                                     </div>
                                 </div>

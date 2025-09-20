@@ -10,6 +10,8 @@ import {
   fetchProductsFromDB, 
   refreshProductsData 
 } from "./sample-data"
+import { addToCart } from "../../slices/cartSlice"
+import { toast } from 'sonner'
 
 // NO STATIC DATA - All products fetched from MongoDB in real-time
 
@@ -17,6 +19,7 @@ export function ProductShowcase({ filtered }) {
   const dispatch = useDispatch()
   const router = useRouter()
   const { products, filteredProducts, loading, error } = useSelector((state) => state.products)
+  const { isAuthenticated } = useSelector((state) => state.userState)
   const [realProducts, setRealProducts] = useState([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
@@ -29,55 +32,31 @@ export function ProductShowcase({ filtered }) {
   // Load real products from MongoDB on component mount (client-side only)
   useEffect(() => {
     if (!isMounted) return
-    
-    const loadRealProducts = async () => {
+
+    const loadProducts = async () => {
       try {
         setIsLoadingProducts(true)
-        dispatch(setLoading(true))
         
-        // Fetch real products from MongoDB
-        const mongoProducts = await fetchProductsFromDB()
-        if (mongoProducts && mongoProducts.length > 0) {
-          setRealProducts(mongoProducts)
-          dispatch(setProducts(mongoProducts))
-        } else {
-          // Fallback to getAllProducts if fetchProductsFromDB returns empty
-          const allProducts = getAllProducts()
-          setRealProducts(allProducts)
-          dispatch(setProducts(allProducts))
+        // First try to get existing products
+        let products = await getAllProducts()
+        
+        // If no products exist (like on refresh), fetch from DB
+        if (!products || products.length === 0) {
+          console.log('No products in memory, fetching from DB...')
+          products = await fetchProductsFromDB()
         }
-      } catch (error) {
-        console.error('Error loading products from MongoDB:', error)
-        // Fallback to getAllProducts on error
-        const allProducts = getAllProducts()
-        setRealProducts(allProducts)
-        dispatch(setProducts(allProducts))
-      } finally {
+        
+        dispatch(setProducts(products || []))
+        setRealProducts(products || [])
         setIsLoadingProducts(false)
-        dispatch(setLoading(false))
+      } catch (error) {
+        console.error('Error loading products:', error)
+        setRealProducts([])
+        setIsLoadingProducts(false)
       }
     }
 
-    loadRealProducts()
-  }, [dispatch, isMounted])
-
-  // Listen for real-time product updates from MongoDB (client-side only)
-  useEffect(() => {
-    if (!isMounted) return
-    
-    const handleProductsUpdate = (event) => {
-      const { products: updatedProducts } = event.detail
-      setRealProducts(updatedProducts)
-      dispatch(setProducts(updatedProducts))
-      console.log('Real Products updated from MongoDB:', updatedProducts)
-    }
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('productsUpdated', handleProductsUpdate)
-      return () => {
-        window.removeEventListener('productsUpdated', handleProductsUpdate)
-      }
-    }
+    loadProducts()
   }, [dispatch, isMounted])
 
   // Prevent hydration mismatch by not rendering until mounted
@@ -101,12 +80,33 @@ export function ProductShowcase({ filtered }) {
   }
 
   // Display products based on filtered prop
-  const displayProducts = filtered ? filteredProducts : products
+  const displayProducts = filtered ? (filteredProducts || []) : (products || [])
 
   // Function to handle add to cart
   const handleAddToCart = (product) => {
-    console.log("Adding to cart:", product)
-    // Add your cart logic here
+    // Check authentication from Redux store or localStorage as fallback
+    let isLoggedIn = isAuthenticated;
+    
+    // If Redux state doesn't have auth info, check localStorage (from main store persistence)
+    if (!isLoggedIn && typeof window !== 'undefined') {
+      try {
+        const persistedState = localStorage.getItem('persist:root');
+        if (persistedState) {
+          const parsed = JSON.parse(persistedState);
+          const userState = JSON.parse(parsed.userState || '{}');
+          isLoggedIn = userState.isAuthenticated === true;
+        }
+      } catch (error) {
+        console.log('Could not parse persisted state:', error);
+      }
+    }
+    
+    if (!isLoggedIn) {
+      toast.error('Please login to add to cart');
+      return;
+    }
+    dispatch(addToCart({ product, quantity: 1 }));
+    toast.success(`${product.name} added to cart!`);
   }
 
   // Function to handle buy now
@@ -160,7 +160,7 @@ export function ProductShowcase({ filtered }) {
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
       {displayProducts.map((product) => (
         <div
-          key={product.id}
+          key={product._id || product.id}
           className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
         >
           <div className="relative h-48">

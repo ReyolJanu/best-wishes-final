@@ -540,9 +540,9 @@ export default function DashboardSidebar({ role = "admin", title = "Best Wishes"
 
         {/* Mobile Overlay */}
         {isMobileOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-25 z-40 md:hidden" onClick={() => setIsMobileOpen(false)} />
+          <div className="fixed inset-0 bg-black/50 bg-opacity-25 z-40 md:hidden" onClick={() => setIsMobileOpen(false)} />
         )}
-
+   {/* fade-in-0 fixed inset-0 z-50 bg-black/50 */}
         {/* Sidebar */}
         <div
           className={`

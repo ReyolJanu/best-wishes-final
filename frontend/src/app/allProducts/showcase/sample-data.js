@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // Real MongoDB Categories data - NO DUMMY DATA
 let categoriesData = [];
@@ -50,7 +50,7 @@ export const fetchCategoriesFromDB = async () => {
 // Function to fetch products from MongoDB (if needed)
 export const fetchProductsFromDB = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/`);
+    const response = await fetch(`${API_BASE_URL}/products?limit=1000`);
     const result = await response.json();
     
     if (result.success) {

@@ -115,7 +115,7 @@ export function UsersManagement() {
         body,
         startY: 88,
         styles: { fontSize: 9, cellPadding: 6, overflow: 'linebreak' },
-        headStyles: { fillColor: [59,130,246] },
+        headStyles: { fillColor: [147, 51, 234] }, // purple (Tailwind bg-purple-600)
         columnStyles: {
           0: { cellWidth: 150 }, // Name
           1: { cellWidth: 210 }, // Email
@@ -180,6 +180,7 @@ export function UsersManagement() {
         message="Review the PDF preview below. Click Download to save the file."
         type="confirm"
         confirmText="Download"
+        iconColor="text-purple-600"   // <-- HERE
         onConfirm={() => {
           if (!pdfUrl) return
           const a = document.createElement('a')

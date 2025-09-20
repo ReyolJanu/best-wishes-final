@@ -36,7 +36,17 @@ export function FilterSidebar() {
   const searchParams = useSearchParams()
   const initialCategory = searchParams.get('category')
   
-  const { category, filters } = useSelector(/** @param {RootState} state */(state) => state.products.filters)
+  const { category, filters } = useSelector(/** @param {RootState} state */(state) => {
+    // Handle both custom store and main store structures
+    if (state.products && state.products.filters) {
+      return state.products.filters;
+    }
+    // Fallback for main store structure
+    return {
+      category: "",
+      filters: {}
+    };
+  })
   const [selectedFilters, setSelectedFilters] = useState({})
   const [priceRange, setPriceRange] = useState([0, 200])
   /** @type {[number[], React.Dispatch<React.SetStateAction<number[]>>]} */
@@ -62,7 +72,7 @@ export function FilterSidebar() {
         setIsLoading(true)
         const categories = getAllCategories()
         setCategoriesData(categories)
-        console.log("DEBUG: categoriesData structure", JSON.stringify(categories, null, 2));
+        // console.log("DEBUG: categoriesData structure", JSON.stringify(categories, null, 2));
         
         // Get current category data
         if (category) {
@@ -182,7 +192,7 @@ export function FilterSidebar() {
         initialFilters = { [attribute]: [value] };
         setSelectedFilters(initialFilters);
         dispatch(setFilter({ key: attribute, values: [value] }));
-        console.log(`It's a subcategory. Parent: ${mainCategoryKey}, Filter: ${attribute}=${value}`);
+        // console.log(`It's a subcategory. Parent: ${mainCategoryKey}, Filter: ${attribute}=${value}`);
       }
     }
     
