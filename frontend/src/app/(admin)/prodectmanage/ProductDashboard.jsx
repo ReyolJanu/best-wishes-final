@@ -113,7 +113,10 @@ export default function ProductDashboard() {
       "Are you sure you want to delete this product? This action cannot be undone.",
       async () => {
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/${id}`, { method: "DELETE" })
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/${id}`, { 
+            method: "DELETE",
+            credentials: 'include'
+          })
           if (response.ok) {
             showSuccess("Success", "Product deleted successfully!", () => {
               // Stay on the same page and refresh the product list

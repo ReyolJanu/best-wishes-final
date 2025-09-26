@@ -18,6 +18,32 @@ const eventReminderSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  occasion: {
+    type: String,
+    required: true,
+    enum: [
+      'birthday',
+      'anniversary',
+      'wedding',
+      'graduation',
+      'baby_shower',
+      'housewarming',
+      'valentine_day',
+      'mother_day',
+      'father_day',
+      'christmas',
+      'new_year',
+      'thanksgiving',
+      'engagement',
+      'retirement',
+      'promotion',
+      'get_well_soon',
+      'sympathy',
+      'congratulations',
+      'thank_you',
+      'general'
+    ]
+  },
   time: {
     type: String,
     required: true

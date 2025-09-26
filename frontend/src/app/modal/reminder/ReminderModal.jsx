@@ -1,55 +1,71 @@
 "use client";
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { useSelector } from 'react-redux';
 import Loader from '../../components/loader/page';
 import { toast, Toaster } from 'sonner';
 import axios from 'axios';
+import { getOccasionTypes } from '../../services/occasionService';
 
 const ReminderGift = ({ onClose, children }) => {
   const modalRef = useRef(null);
   const [remindermsg, setRemindermsg] = useState("");
   const [date, setDate] = useState("");
   const [event, setEvent] = useState("");
+  const [occasion, setOccasion] = useState("");
   const [time, setTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [occasionTypes, setOccasionTypes] = useState([]);
 
   const { user } = useSelector((state) => state.userState);
 
-  // Helper to get tomorrow's date in yyyy-mm-dd format
-  const getTomorrowDate = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+  // Fetch occasion types on component mount
+  useEffect(() => {
+    const fetchOccasionTypes = async () => {
+      try {
+        const types = await getOccasionTypes();
+        setOccasionTypes(types);
+      } catch (error) {
+        console.error('Error fetching occasion types:', error);
+      }
+    };
+    fetchOccasionTypes();
+  }, []);
+
+  // Helper to get today's date in yyyy-mm-dd format
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
   };
 
   const HandleReminder = async () => {
     setErrorMsg("");
-    if (!remindermsg || !date || !event || event === " " || !time) {
-      toast.error("Please enter all details to continue!");
+    if (!remindermsg || !date || !event || event === "" || !time || !occasion) {
+      toast.error("Please enter all details including occasion to continue!");
       return;
     }
-    // Prevent setting reminders for today or past dates
+    // Prevent setting reminders for past dates only (allow today)
     const selectedDate = new Date(date);
     const now = new Date();
     now.setHours(0,0,0,0); // Set to start of today
-    if (selectedDate <= now) {
-      toast.error("Please select a future date for the reminder!");
+    if (selectedDate < now) {
+      toast.error("Please select today's date or a future date for the reminder!");
       return;
     }
     setLoading(true);
     try {
       const res = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/reminder`,
-        { remindermsg, date, event, time },
+        { remindermsg, date, event, time, occasion },
         { withCredentials: true }
       );
-      toast.success("Reminder set successfully!");
+      toast.success("Reminder set successfully with product recommendations!");
       setRemindermsg("");
       setDate("");
       setEvent("");
       setTime("");
+      setOccasion("");
       onClose && onClose();
     } catch (error) {
       console.error('Reminder error:', error);
@@ -79,13 +95,33 @@ const ReminderGift = ({ onClose, children }) => {
           )}
           {errorMsg && <p className="text-red-500 mt-2">{errorMsg}</p>}
           <div className="flex-col">
-            <p className="text-[#5C5C5C] font-semibold">Reminder News</p>
+            <p className="text-[#5C5C5C] font-semibold">Reminder Message</p>
             <textarea
               value={remindermsg}
               onChange={(e) => setRemindermsg(e.target.value)}
-              type="text"
-              className="border-2 border-[#D9D9D9] rounded-[5px] w-full mt-[10px] h-[150px] p-[15px]"
+              placeholder="Enter your reminder message here..."
+              className="border-2 border-[#D9D9D9] rounded-[5px] w-full mt-[10px] h-[120px] p-[15px] resize-none"
             />
+          </div>
+          
+          {/* Occasion Selection */}
+          <div className="flex-col pt-[15px]">
+            <p className="text-[#5C5C5C] font-semibold">Choose Occasion</p>
+            <div className="border-2 border-[#D9D9D9] w-full flex justify-center items-center pl-[10px] pr-[10px] mt-[10px] h-[50px] rounded-[5px]">
+              <select
+                value={occasion}
+                onChange={(e) => setOccasion(e.target.value)}
+                className="w-full bg-transparent outline-none placeholder:text-gray-600"
+              >
+                <option value="">Select Occasion Type</option>
+                {occasionTypes.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">This helps us recommend the perfect gifts for your occasion</p>
           </div>
           <div className="flex w-full pt-[15px]">
             <div className="flex-col w-[50%] justify-between items-center ">
@@ -96,7 +132,7 @@ const ReminderGift = ({ onClose, children }) => {
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     type="date"
-                    min={getTomorrowDate()}
+                    min={getTodayDate()}
                     className="w-full h-full outline-none text-gray-700"
                   />
                 </div>
@@ -120,15 +156,18 @@ const ReminderGift = ({ onClose, children }) => {
                     name="event"
                     className="w-full bg-transparent outline-none placeholder:text-gray-600"
                   >
-                    <option value=" ">Select Event</option>
-                    <option value="Birthday">Birthday</option>
-                    <option value="Fathers Day">Father's Day</option>
-                    <option value="Mothers Day">Mother's Day</option>
-                    <option value="Brothers Day">Brother's Day</option>
-                    <option value="Christmas">Christmas</option>
-                    <option value="Key Birthday">Key Birthday</option>
-                    <option value="New Year">New Year</option>
-                    <option value="Others">Others</option>
+                    <option value="">Select Event</option>
+                    <option value="Birthday Party">Birthday Party</option>
+                    <option value="Anniversary Celebration">Anniversary Celebration</option>
+                    <option value="Wedding Ceremony">Wedding Ceremony</option>
+                    <option value="Graduation Party">Graduation Party</option>
+                    <option value="Baby Shower">Baby Shower</option>
+                    <option value="Housewarming Party">Housewarming Party</option>
+                    <option value="Holiday Celebration">Holiday Celebration</option>
+                    <option value="Farewell Party">Farewell Party</option>
+                    <option value="Promotion Celebration">Promotion Celebration</option>
+                    <option value="Family Gathering">Family Gathering</option>
+                    <option value="Other Event">Other Event</option>
                   </select>
                 </div>
               </div>

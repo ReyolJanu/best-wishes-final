@@ -2,26 +2,37 @@
 const EventReminder = require('../models/EventReminder');
 const User = require('../models/User');
 const sendReminderEmail = require('../utils/reminderMail');
+const { getOccasionTypes } = require('../utils/productRecommendation');
 
 exports.createReminder = async (req, res) => {
   try {
-    const { remindermsg, date, event, time } = req.body;
-    if (!remindermsg || !date || !event || !time) {
-      return res.status(400).json({ success: false, message: 'All fields are required.' });
+    const { remindermsg, date, event, time, occasion } = req.body;
+    if (!remindermsg || !date || !event || !time || !occasion) {
+      return res.status(400).json({ success: false, message: 'All fields including occasion are required.' });
     }
+    
     const reminder = await EventReminder.create({
       user: req.user.id,
       remindermsg,
       date,
       event,
-      time
+      time,
+      occasion
     });
-
-
 
     res.status(201).json({ success: true, message: 'Reminder Set Successfully', reminder });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Something went wrong', error: err.message });
+  }
+};
+
+// Get available occasion types for dropdown
+exports.getOccasionTypes = async (req, res) => {
+  try {
+    const occasionTypes = getOccasionTypes();
+    res.status(200).json({ success: true, occasionTypes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch occasion types', error: err.message });
   }
 };
 
@@ -39,7 +50,7 @@ exports.getUserReminders = async (req, res) => {
 exports.updateReminder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { remindermsg, date, event, time } = req.body;
+    const { remindermsg, date, event, time, occasion } = req.body;
     const reminder = await EventReminder.findOne({ _id: id, user: req.user.id });
     if (!reminder) {
       return res.status(404).json({ success: false, message: 'Reminder not found' });
@@ -48,6 +59,7 @@ exports.updateReminder = async (req, res) => {
     reminder.date = date || reminder.date;
     reminder.event = event || reminder.event;
     reminder.time = time || reminder.time;
+    reminder.occasion = occasion || reminder.occasion;
     await reminder.save();
     res.status(200).json({ success: true, message: 'Reminder updated successfully', reminder });
   } catch (err) {

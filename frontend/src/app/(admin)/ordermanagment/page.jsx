@@ -227,7 +227,9 @@ export default function OrderManagement() {
       await withLoading(async () => {
         try {
           // Replace with actual API call
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`);
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/all`, {
+            credentials: 'include'
+          });
           const data = await response.json();
           setOrders(data);
         } catch (error) {
@@ -248,6 +250,7 @@ export default function OrderManagement() {
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/${orderId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(updates),
         });
         
@@ -269,6 +272,7 @@ export default function OrderManagement() {
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/bulk-update`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ orderIds, updates }),
         });
         
@@ -290,6 +294,7 @@ export default function OrderManagement() {
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/bulk-delete`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ orderIds }),
         });
         

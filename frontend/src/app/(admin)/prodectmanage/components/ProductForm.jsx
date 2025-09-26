@@ -111,7 +111,9 @@ export default function ProductForm({ product = null }) {
   const loadCategories = async () => {
     try {
       console.log("🔄 Loading categories...")
-      const response = await fetch("/prodectmanage/api/categories")
+      const response = await fetch("/prodectmanage/api/categories", {
+        credentials: 'include'
+      })
       if (!response.ok) {
         throw new Error("Failed to fetch categories")
       }
@@ -331,6 +333,7 @@ const handleSubmit = async () => {
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
+      credentials: 'include', // This sends cookies/authentication tokens
       body: JSON.stringify(productData),
     });
 

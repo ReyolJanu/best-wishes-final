@@ -33,7 +33,43 @@ export default function CheckoutPage() {
         dispatch(decreaseQuantity(id));
     };
 
-    const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    // Helper function to safely get price with multiple fallbacks
+    const getPrice = (product) => {
+        // Try different possible price field names
+        const possiblePrices = [
+            product?.price,
+            product?.originalPrice, 
+            product?.salePrice,
+            product?.cost,
+            product?.amount,
+            product?.unitPrice
+        ];
+
+        for (const price of possiblePrices) {
+            if (price !== undefined && price !== null && price !== '') {
+                const numPrice = parseFloat(price);
+                if (!isNaN(numPrice) && numPrice > 0) {
+                    return numPrice;
+                }
+            }
+        }
+        return 0;
+    };
+
+    // Helper function to safely get quantity
+    const getQuantity = (quantity) => {
+        const numQuantity = parseInt(quantity);
+        return isNaN(numQuantity) || numQuantity < 1 ? 1 : numQuantity;
+    };
+
+    const total = cart.reduce((sum, item) => {
+        const price = getPrice(item.product);
+        const quantity = getQuantity(item.quantity);
+        return sum + (price * quantity);
+    }, 0);
+
+    // Ensure total is always a valid number
+    const safeTotal = isNaN(total) ? 0 : total;
 
     // Helper function to get product image
     const getProductImage = (product) => {
@@ -59,6 +95,7 @@ export default function CheckoutPage() {
             <div className='px-4 md:px-8 lg:px-16 xl:px-20 max-w-7xl mx-auto'>
                 <Navbar />
                 <div className='text-2xl md:text-3xl font-semibold mt-4 mb-6'>Cart ({cart.length})</div>
+                
 
                 <div className='flex flex-col lg:flex-row w-full mt-6 gap-6 min-h-[50vh]'>
                     {cart.length === 0 ? (
@@ -80,7 +117,7 @@ export default function CheckoutPage() {
                                         <div className="relative w-full sm:w-32 h-32 mb-4 sm:mb-0 sm:mr-4">
                                             <Image
                                                 src={getProductImage(item.product)}
-                                                alt={item.product.name}
+                                                alt={item.product?.name || 'Product image'}
                                                 fill
                                                 className="rounded-lg object-cover"
                                                 onError={(e) => {
@@ -90,8 +127,8 @@ export default function CheckoutPage() {
                                         </div>
                                         <div className='flex-1 flex flex-col sm:flex-row gap-4'>
                                             <div className='flex-1'>
-                                                <p className='text-lg font-medium mb-2'>{item.product.name}</p>
-                                                <p className='text-xl font-semibold text-[#822BE2] mb-2'>US ${item.product.price}</p>
+                                                <p className='text-lg font-medium mb-2'>{item.product?.name || 'Unknown Product'}</p>
+                                                <p className='text-xl font-semibold text-[#822BE2] mb-2'>US ${getPrice(item.product).toFixed(2)}</p>
                                                 <div className="flex text-yellow-400 text-sm">
                                                     {Array.from({ length: 5 }, (_, i) => {
                                                         const fullStars = Math.floor(item.product.rating || 0);
@@ -116,7 +153,7 @@ export default function CheckoutPage() {
                                                         >
                                                             -
                                                         </button>
-                                                        <span className='bg-white border-2 border-gray-200 w-12 h-8 rounded flex justify-center items-center font-medium'>{item.quantity}</span>
+                                                        <span className='bg-white border-2 border-gray-200 w-12 h-8 rounded flex justify-center items-center font-medium'>{getQuantity(item.quantity)}</span>
                                                         <button
                                                             className='w-8 h-8 flex justify-center items-center rounded bg-gray-300 text-gray-700 text-xl font-bold hover:bg-purple-200 hover:text-[#822BE2] hover:border-2 hover:border-[#822BE2] transition-all'
                                                             onClick={() => handleIncrease(item.productId)}
@@ -133,7 +170,7 @@ export default function CheckoutPage() {
                                                 </div>
                                                 <div className='flex justify-between items-center pt-2 border-t border-gray-200'>
                                                     <span className='text-sm font-medium'>Total:</span> 
-                                                    <span className='text-lg font-semibold text-[#822BE2]'>US ${(item.product.price * item.quantity).toFixed(2)}</span>
+                                                    <span className='text-lg font-semibold text-[#822BE2]'>US ${(getPrice(item.product) * getQuantity(item.quantity)).toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -151,12 +188,12 @@ export default function CheckoutPage() {
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <p className="text-sm sm:text-base text-gray-600">Subtotal</p>
-                                                <p className="text-sm sm:text-base font-semibold text-gray-800">US ${total.toFixed(2)}</p>
+                                                <p className="text-sm sm:text-base font-semibold text-gray-800">US ${safeTotal.toFixed(2)}</p>
                                             </div>
                                         </div>
                                         <div className='mt-6'>
                                             <button onClick={handleCheckout} className="h-12 w-full rounded-lg bg-[#822BE2] hover:bg-purple-200 hover:border-2 hover:border-[#822BE2] hover:text-[#822BE2] hover:cursor-pointer text-white font-bold text-lg transition-all duration-200">
-                                                Checkout US ${total.toFixed(2)}
+                                                Checkout US ${(safeTotal + 10).toFixed(2)}
                                             </button>
                                         </div>
                                     </div>
@@ -166,11 +203,11 @@ export default function CheckoutPage() {
                                         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6'>
                                             <div>
                                                 <p className='text-sm font-medium text-gray-600 mb-1'>First Name</p>
-                                                <p className='text-base font-semibold text-[#822BE2]'>{user.firstName}</p>
+                                                <p className='text-base font-semibold text-[#822BE2]'>{user?.firstName || 'Not provided'}</p>
                                             </div>
                                             <div>
                                                 <p className='text-sm font-medium text-gray-600 mb-1'>Last Name</p>
-                                                <p className='text-base font-semibold text-[#822BE2]'>{user.lastName}</p>
+                                                <p className='text-base font-semibold text-[#822BE2]'>{user?.lastName || 'Not provided'}</p>
                                             </div>
                                         </div>
                                         
@@ -180,7 +217,7 @@ export default function CheckoutPage() {
                                                 <input
                                                     type='text'
                                                     placeholder='shipping address'
-                                                    defaultValue={user.address}
+                                                    defaultValue={user?.address || ''}
                                                     className='bg-transparent outline-none flex-1 text-sm'
                                                 />
                                                 <button className='ml-2'>
