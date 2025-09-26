@@ -43,8 +43,35 @@ router.get("/:categoryKey/attributes/:attributeName/items/:itemValue", async (re
     }
 });
 
-// Get category by ID
-router.get("/:id", getCategoryById);
+// Get category by key
+router.get("/:categoryKey", async (req, res) => {
+  try {
+    const category = await Category.findOne({ key: req.params.categoryKey });
+    
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found"
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: category,
+      message: "Category fetched successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching category:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching category",
+      error: error.message
+    });
+  }
+});
+
+// Get category by ID (fallback for legacy routes)
+router.get("/id/:id", getCategoryById);
 
 // ✅ Add categoryKey-based routes before ID-based routes
 // Update category by key

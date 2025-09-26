@@ -574,49 +574,45 @@ export default function CategoryFilters({
   // Add new attribute value to database and update state
   const addAttributeValue = async (attributeName, newValue) => {
     if (!newValue || !newValue.trim()) return;
-    
+
     const trimmedValue = newValue.trim();
-    
+
     try {
-      // Check if value already exists
-      const existingAttribute = attributes.find(attr => attr.name === attributeName);
+      const existingAttribute = attributes.find((attr) => attr.name === attributeName);
       if (existingAttribute && existingAttribute.items.includes(trimmedValue)) {
-        showError("Validation Error", `"${trimmedValue}" already exists in this attribute!`);
+        showError("Validation Error", `\"${trimmedValue}\" already exists in this attribute!`);
         return;
       }
 
-      // Add to database
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/${selectedMainCategory}/attributes/${attributeName}/items`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ value: trimmedValue })
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/categories/${selectedMainCategory}/attributes/${attributeName}/items`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ value: trimmedValue }),
+        }
+      );
 
       if (response.ok) {
-        // Update local state
-        const updatedAttributes = attributes.map(attribute => {
+        const updatedAttributes = attributes.map((attribute) => {
           if (attribute.name === attributeName) {
             return {
               ...attribute,
-              items: [...attribute.items, trimmedValue]
+              items: [...attribute.items, trimmedValue],
             };
           }
           return attribute;
         });
         setAttributes(updatedAttributes);
-        
-        // Show success message
-        showSuccess("Success", `"${trimmedValue}" added successfully to ${attributeName}!`, () => {
-          // Stay on the same page - no navigation
-        });
+        showSuccess("Success", `\"${trimmedValue}\" added successfully to ${attributeName}!`);
       } else {
         const errorData = await response.json();
-        showError("Error", `Failed to add value: ${errorData.message || 'Unknown error'}`);
+        showError("Error", `Failed to add value: ${errorData.message || "Unknown error"}`);
       }
     } catch (error) {
-      console.error('Error adding attribute value:', error);
+      console.error("Error adding attribute value:", error);
       showError("Error", "Error adding attribute value. Please try again.");
     }
   }
@@ -1055,6 +1051,7 @@ export default function CategoryFilters({
               )}
             </div>
           ))}
+
         </div>
 
         {/* Empty state */}
@@ -1139,7 +1136,14 @@ export default function CategoryFilters({
     if (productId) {
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/${productId}`)
         .then(res => res.json())
-        .then(data => setProduct(data));
+        .then(data => {
+          if (data) {
+            setProduct(data);
+          } else {
+            console.error("Product data is null or undefined.");
+          }
+        })
+        .catch(err => console.error("Error fetching product data:", err));
     }
   }, [productId]);
 
@@ -1155,14 +1159,12 @@ export default function CategoryFilters({
   }, [selectedMainCategory]);
 
   const handleAttributeValueSelect = (attributeName, value) => {
-    setSelectedAttributeValues(prev => {
+    setSelectedAttributeValues((prev) => {
       const prevValues = Array.isArray(prev[attributeName]) ? prev[attributeName] : [];
       let newValues;
       if (prevValues.includes(value)) {
-        // Deselect
-        newValues = prevValues.filter(v => v !== value);
+        newValues = prevValues.filter((v) => v !== value);
       } else {
-        // Select
         newValues = [...prevValues, value];
       }
       return { ...prev, [attributeName]: newValues };
@@ -1234,10 +1236,10 @@ export default function CategoryFilters({
             <div>
               <Label htmlFor="categoryIcon">Icon</Label>
               <MediaUpload
-                onImagesChange={(urls) => {
-                  setNewCategoryForm((prev) => ({ ...prev, icon: urls?.[0] || "" }));
+                onImagesChange={(images) => {
+                  setNewCategoryForm((prev) => ({ ...prev, icon: images?.[0]?.url || "" }));
                 }}
-                images={newCategoryForm.icon ? [newCategoryForm.icon] : []}
+                images={newCategoryForm.icon ? [{ id: 'icon', url: newCategoryForm.icon, name: 'Category Icon' }] : []}
                 onVideosChange={() => {}} 
                 videos={[]}
               />
@@ -1404,16 +1406,16 @@ export default function CategoryFilters({
                 </div>
                 {editingMainCategory === categoryKey ? (
                   <div className="space-y-2">
-                    <Input value={mainCategoryEditForm.name} onChange={e => setMainCategoryEditForm(f => ({ ...f, name: e.currentTarget.value }))} placeholder="Category Name" className="mb-1" />
-                    <Input value={mainCategoryEditForm.key} onChange={e => setMainCategoryEditForm(f => ({ ...f, key: e.currentTarget.value }))} placeholder="Category Key" className="mb-1" />
-                    <Input value={mainCategoryEditForm.description} onChange={e => setMainCategoryEditForm(f => ({ ...f, description: e.currentTarget.value }))} placeholder="Description" className="mb-1" />
+                    <Input value={mainCategoryEditForm.name} onChange={e => setMainCategoryEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Category Name" className="mb-1" />
+                    <Input value={mainCategoryEditForm.key} onChange={e => setMainCategoryEditForm(f => ({ ...f, key: e.target.value }))} placeholder="Category Key" className="mb-1" />
+                    <Input value={mainCategoryEditForm.description} onChange={e => setMainCategoryEditForm(f => ({ ...f, description: e.target.value }))} placeholder="Description" className="mb-1" />
                     <div className="mt-2">
                         <Label className="text-sm font-medium">Icon</Label>
                         <MediaUpload
-                            onImagesChange={(urls) => {
-                                setMainCategoryEditForm((prev) => ({ ...prev, icon: urls?.[0] || "" }));
+                            onImagesChange={(images) => {
+                                setMainCategoryEditForm((prev) => ({ ...prev, icon: images?.[0]?.url || "" }));
                             }}
-                            images={mainCategoryEditForm.icon ? [mainCategoryEditForm.icon] : []}
+                            images={mainCategoryEditForm.icon ? [{ id: 'icon', url: mainCategoryEditForm.icon, name: 'Category Icon' }] : []}
                             onVideosChange={() => {}}
                         />
                     </div>
@@ -1998,7 +2000,7 @@ export default function CategoryFilters({
                                   border: "none",
                                   borderRadius: "4px",
                                   padding: "0.2rem 0.4rem",
-                                  marginLeft: "0.2rem",
+                                                                   marginLeft: "0.2rem",
                                   cursor: "pointer",
                                   display: "flex",
                                   alignItems: "center"
