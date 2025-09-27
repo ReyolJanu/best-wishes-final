@@ -54,8 +54,8 @@ const orderSummarySchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ['order', 'surprisegift'],
-    default: 'order'
+    enum: ['order', 'orders', 'surprisegift'],
+    default: 'orders'
   }
 }, {
   timestamps: true

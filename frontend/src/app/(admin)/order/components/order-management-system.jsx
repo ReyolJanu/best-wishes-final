@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Download,
   Printer,
+  Loader2,
 } from "lucide-react"
 
 const statusColors = {
@@ -64,6 +65,7 @@ export function OrderManagementSystem() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [fromDate, setFromDate] = useState(null)
   const [toDate, setToDate] = useState(null)
+  const [loadingStates, setLoadingStates] = useState({}) // Track loading state for each button
 
   const filteredOrders = orders.filter((order) => {
     if (!order || !order.user || !order.items) return false
@@ -77,7 +79,7 @@ export function OrderManagementSystem() {
       (activeTab === "accepted" && order.status === "processing") ||
       (activeTab === "packed" && order.status === "packing") ||
       (activeTab === "delivery" && order.status === "shipped") ||
-      (activeTab === "all") // Show ALL orders regardless of status in All tab
+      (activeTab === "all" && order.status === "delivered") // Show only completed orders in All tab
 
     // Apply date filtering only for "All" tab
     let matchesDateFilter = true;
@@ -113,21 +115,20 @@ export function OrderManagementSystem() {
     )
   }
 
-  const confirmAction = (message, action) => {
-    if (window.confirm(message)) {
-      action();
-    }
-  };
+  const setButtonLoading = (orderId, actionType, isLoading) => {
+    setLoadingStates(prev => ({
+      ...prev,
+      [`${orderId}-${actionType}`]: isLoading
+    }))
+  }
 
   const testProductsEndpoint = async () => {
     try {
       console.log("Testing products endpoint...");
       const response = await axios.get(`${API_BASE_URL}/products/test`);
       console.log("Products test response:", response.data);
-      alert(`Products test: ${response.data.message}\nTotal products: ${response.data.totalProducts}`);
     } catch (error) {
       console.error("Error testing products endpoint:", error);
-      alert(`Error testing products: ${error.message}`);
     }
   };
 
@@ -164,7 +165,6 @@ export function OrderManagementSystem() {
 
       if (validItems.length === 0) {
         // console.warn("No valid product IDs found in order items");
-        alert("Warning: No valid product IDs found. Stock reduction skipped.");
         return;
       }
 
@@ -205,7 +205,6 @@ export function OrderManagementSystem() {
         // Removed alert for successful stock update
       } else {
         // console.error("Failed to update product stock:", response.data.message);
-        alert(`Failed to update stock: ${response.data.message}`);
       }
     } catch (error) {
       // console.error("Error updating product stock:", error);
@@ -223,40 +222,26 @@ export function OrderManagementSystem() {
         const itemsList = insufficientItems.map(item => 
           `${item.productName}: requested ${item.requestedQuantity}, available ${item.availableStock}`
         ).join('\n');
-        alert(`Insufficient stock for:\n${itemsList}`);
       } else if (error.response?.data?.errors) {
         const errorMessages = error.response.data.errors.map(err => err.msg || err).join('\n');
-        alert(`Validation errors:\n${errorMessages}`);
       } else if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
       } else {
-        alert("Error updating product stock. Please try again.");
       }
     }
   };
 
   const acceptOrder = async (orderId) => {
     try {
-      console.log("Order ID being sent:", orderId); // Debugging log
+      console.log("Order ID being sent:", orderId);
+      setButtonLoading(orderId, 'accept', true);
 
-      const button = document.querySelector(`#accept-order-button-${orderId}`);
-      if (button) {
-        button.disabled = true;
-        button.textContent = "Processing...";
-      }
-
-      // Accept the order (Pending -> Processing)
-      const acceptResponse = await axios.put(
+      const response = await axios.put(
         `${API_BASE_URL}/orders/accept`,
-        {
-          orderId: orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId: orderId },
+        { withCredentials: true }
       );
 
-      if (acceptResponse.data.success) {
+      if (response.data.success) {
         console.log(`Order ${orderId} accepted successfully`);
         
         // Update local state
@@ -273,50 +258,30 @@ export function OrderManagementSystem() {
         if (order && order.items) {
           await reduceProductStock(order.items);
         }
-
-        alert(`Order ${orderId} has been accepted and moved to processing!`);
       } else {
-        console.error(`Failed to accept order: ${acceptResponse.data.message}`);
-        alert(`Failed to accept order: ${acceptResponse.data.message}`);
+        console.error(`Failed to accept order: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error processing order:", error);
-      if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("Error processing order. Please try again.");
-      }
     } finally {
-      const button = document.querySelector(`#accept-order-button-${orderId}`);
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Accept Order";
-      }
+      setButtonLoading(orderId, 'accept', false);
     }
   }
 
   const updateOrderToPacking = async (orderId) => {
     try {
       console.log("Moving order to packing:", orderId);
-
-      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
-      if (button) {
-        button.disabled = true;
-        button.textContent = "Processing...";
-      }
+      setButtonLoading(orderId, 'packing', true);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-packing`,
-        {
-          orderId: orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId: orderId },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
         console.log(`Order ${orderId} status updated to Packing`);
+        
         // Update local state
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
@@ -325,25 +290,13 @@ export function OrderManagementSystem() {
               : order
           )
         );
-
-        alert(`Order ${orderId} has been moved to packing!`);
       } else {
         console.error(`Failed to update order to packing: ${response.data.message}`);
-        alert(`Failed to update order to packing: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order to packing:", error);
-      if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("Error updating order to packing. Please try again.");
-      }
     } finally {
-      const button = document.querySelector(`#move-to-packing-button-${orderId}`);
-      if (button) {
-        button.disabled = false;
-        button.textContent = "Move to Packing";
-      }
+      setButtonLoading(orderId, 'packing', false);
     }
   }
 
@@ -509,16 +462,8 @@ export function OrderManagementSystem() {
 
   const printAllOrdersSequentially = async (orders) => {
     if (!orders || orders.length === 0) {
-      alert("No orders available to print.");
       return;
     }
-
-    // Show confirmation with order count
-    const confirmed = window.confirm(
-      `Are you sure you want to print ${orders.length} orders? Each order will be printed separately.`
-    );
-    
-    if (!confirmed) return;
 
     // Print orders one by one with delays
     for (let i = 0; i < orders.length; i++) {
@@ -536,7 +481,6 @@ export function OrderManagementSystem() {
     
     // Show completion message
     setTimeout(() => {
-      alert(`Successfully initiated printing for ${orders.length} orders. Please check your printer queue.`);
     }, 2000);
   };
 
@@ -803,29 +747,15 @@ export function OrderManagementSystem() {
     }
   };
 
-  const updateButtonState = (buttonId, isProcessing, defaultText) => {
-    const button = document.querySelector(buttonId);
-    if (button) {
-      button.disabled = isProcessing;
-      button.textContent = isProcessing ? "Processing..." : defaultText;
-    }
-  };
-
   const confirmPacked = async (orderId) => {
-    const buttonId = `#confirm-packed-button-${orderId}`;
-    updateButtonState(buttonId, true, "Mark as Shipped");
-
     try {
       console.log("Marking order as shipped:", orderId);
+      setButtonLoading(orderId, 'shipped', true);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-shipped`,
-        {
-          orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
@@ -835,11 +765,8 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "shipped" } : order
           )
         );
-
-        alert(`Order ${orderId} has been marked as shipped and is ready for delivery!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
-        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -849,25 +776,19 @@ export function OrderManagementSystem() {
         alert("Error updating order status. Please try again.");
       }
     } finally {
-      updateButtonState(buttonId, false, "Mark as Shipped");
+      setButtonLoading(orderId, 'shipped', false);
     }
   };
 
   const markAsDelivered = async (orderId) => {
-    const buttonId = `#mark-as-delivered-button-${orderId}`;
-    updateButtonState(buttonId, true, "Mark as Delivered");
-
     try {
       console.log("Marking order as delivered:", orderId);
+      setButtonLoading(orderId, 'delivered', true);
 
       const response = await axios.put(
         `${API_BASE_URL}/orders/update-to-delivered`,
-        {
-          orderId,
-        },
-        {
-          withCredentials: true
-        }
+        { orderId },
+        { withCredentials: true }
       );
 
       if (response.data.success) {
@@ -877,28 +798,19 @@ export function OrderManagementSystem() {
             order.id === orderId ? { ...order, status: "delivered" } : order
           )
         );
-
-        alert(`Order ${orderId} has been marked as delivered!`);
       } else {
         console.error(`Failed to update order status: ${response.data.message}`);
-        alert(`Failed to update order status: ${response.data.message}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
-      if (error.response?.data?.message) {
-        alert(`Error: ${error.response.data.message}`);
-      } else {
-        alert("Error updating order status. Please try again.");
-      }
     } finally {
-      updateButtonState(buttonId, false, "Mark as Delivered");
+      setButtonLoading(orderId, 'delivered', false);
     }
   };
 
   // Updated Export CSV functionality to work only with filtered data on the 'All' tab
   const exportToCSV = () => {
     if (activeTab !== "all") {
-      alert("Export CSV is only available on the 'All' tab.");
       return;
     }
 
@@ -1093,8 +1005,6 @@ export function OrderManagementSystem() {
       orders.forEach((order) => {
         printOrderDetails(order);
       });
-    } else {
-      alert("No orders available to print.");
     }
   };
 
@@ -1335,24 +1245,38 @@ export function OrderManagementSystem() {
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  onClick={() => confirmAction("Accept this order and start processing?", () => acceptOrder(order.id))}
                                   className="ml-2 bg-green-600 hover:bg-green-700"
-                                  id={`accept-order-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-accept`]}
+                                  onClick={() => acceptOrder(order.id)}
                                 >
-                                  Accept Order
+                                  {loadingStates[`${order.id}-accept`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Accept Order"
+                                  )}
                                 </Button>
                               )}
 
-                              {/* Show Move to Packing button for processing orders */}
+                              {/* Show Start Packing button for processing orders */}
                               {order.status === "processing" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmAction("Move this order to packing?", () => updateOrderToPacking(order.id))}
                                   className="ml-2 border-blue-600 text-blue-600 hover:bg-blue-50"
-                                  id={`move-to-packing-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-packing`]}
+                                  onClick={() => updateOrderToPacking(order.id)}
                                 >
-                                  Start Packing
+                                  {loadingStates[`${order.id}-packing`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Start Packing"
+                                  )}
                                 </Button>
                               )}
 
@@ -1361,11 +1285,18 @@ export function OrderManagementSystem() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmAction("Mark this order as shipped?", () => confirmPacked(order.id))}
                                   className="ml-2 border-orange-600 text-orange-600 hover:bg-orange-50"
-                                  id={`confirm-packed-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-shipped`]}
+                                  onClick={() => confirmPacked(order.id)}
                                 >
-                                  Mark as Shipped
+                                  {loadingStates[`${order.id}-shipped`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Mark as Shipped"
+                                  )}
                                 </Button>
                               )}
 
@@ -1374,11 +1305,18 @@ export function OrderManagementSystem() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => confirmAction("Mark this order as delivered?", () => markAsDelivered(order.id))}
                                   className="ml-2 border-purple-600 text-purple-600 hover:bg-purple-50"
-                                  id={`mark-as-delivered-button-${order.id}`}
+                                  disabled={loadingStates[`${order.id}-delivered`]}
+                                  onClick={() => markAsDelivered(order.id)}
                                 >
-                                  Mark as Delivered
+                                  {loadingStates[`${order.id}-delivered`] ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Mark as Delivered"
+                                  )}
                                 </Button>
                               )}
 
