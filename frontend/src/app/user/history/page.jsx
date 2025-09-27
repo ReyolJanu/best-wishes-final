@@ -108,44 +108,54 @@ function Page() {
                 ) : (
                     orders.map((order) => (
                         <div key={order._id} className='flex flex-col w-full items-center justify-center mb-6'>
-                            {order.items.map((item, idx) => (
-                                <div key={item._id || idx} className='flex flex-col md:flex-row w-full gap-2 md:gap-0'>
-                                    <div className='flex items-center w-full md:w-[40%] mb-2 md:mb-0'>
-                                        <div className="relative w-[40%] md:w-[25%] min-w-[80px] max-w-[130px]">
-                                            <Image
-                                                src={getProductImage(item.product)}
-                                                alt={item.product?.name || "Product image"}
-                                                width={130}
-                                                height={120}
-                                                className="rounded-lg object-cover w-full h-auto"
-                                                onError={(e) => {
-                                                    e.target.src = '/placeholder.svg';
-                                                }}
-                                            />
-                                        </div>
-                                        <span className='text-base md:text-[18px] font-semibold ml-2'>{item.product?.name || 'Product name'}</span>
+                            <div className='flex flex-col md:flex-row w-full gap-2 md:gap-0'>
+                                <div className='flex items-center w-full md:w-[40%] mb-2 md:mb-0'>
+                                    <div className="relative w-[40%] md:w-[25%] min-w-[80px] max-w-[130px]">
+                                        <Image
+                                            src={getProductImage(order.items[0]?.product)}
+                                            alt={order.items[0]?.product?.name || "Product image"}
+                                            width={130}
+                                            height={120}
+                                            className="rounded-lg object-cover w-full h-auto"
+                                            onError={(e) => {
+                                                e.target.src = '/placeholder.svg';
+                                            }}
+                                        />
                                     </div>
-                                    <div className='flex flex-wrap md:flex-nowrap justify-between md:justify-evenly items-center w-full md:w-[60%] gap-2'>
-                                        <p className='font-semibold text-sm md:text-[16px]'>US ${item.price?.toFixed(2) || '0.00'}</p>
-                                        <p className='text-sm md:text-[16px]'>{new Date(order.orderedAt).toLocaleDateString()}</p>
-                                        <p className='text-sm md:text-[16px]'>{order.status}</p>
-                                        <button
-                                            onClick={() => handleViewOrder(order)}
-                                            className='text-xl md:text-[23px] p-0 bg-transparent border-none hover:bg-transparent focus:outline-none hover:text-[#822BE2] transition-colors'
-                                        >
-                                            <FaRegEye />
-                                        </button>
-                                        <button
-                                            onClick={() => setShowDeleteModal(order._id)}
-                                            disabled={deleteLoading === order._id || order.status === 'Shipped' || order.status === 'Delivered'}
-                                            className='text-xl md:text-[23px] text-red-500 p-0 bg-transparent border-none hover:bg-transparent focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:text-red-700 transition-colors'
-                                        >
-                                            <RiDeleteBin6Line />
-                                        </button>
-                                        <button className='border-2 border-[#822BE2] text-sm md:text-[16px] rounded bg-[#822BE2] hover:bg-purple-200 hover:border-[#822BE2] hover:text-[#822BE2] hover:cursor-pointer text-white py-1 px-4 transition-colors'>Feedback</button>
+                                    <div className='ml-2'>
+                                        <span className='text-base md:text-[18px] font-semibold block'>
+                                            {order.items.length === 1 
+                                                ? (order.items[0].product?.name || 'Product name')
+                                                : `${order.items.length} Items`
+                                            }
+                                        </span>
+                                        {order.items.length > 1 && (
+                                            <span className='text-sm text-gray-600'>
+                                                {order.items[0].product?.name} + {order.items.length - 1} more
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
-                            ))}
+                                <div className='flex flex-wrap md:flex-nowrap justify-between md:justify-evenly items-center w-full md:w-[60%] gap-2'>
+                                    <p className='font-semibold text-sm md:text-[16px]'>US ${order.total?.toFixed(2) || '0.00'}</p>
+                                    <p className='text-sm md:text-[16px]'>{new Date(order.orderedAt).toLocaleDateString()}</p>
+                                    <p className='text-sm md:text-[16px]'>{order.status}</p>
+                                    <button
+                                        onClick={() => handleViewOrder(order)}
+                                        className='text-xl md:text-[23px] p-0 bg-transparent border-none hover:bg-transparent focus:outline-none hover:text-[#822BE2] transition-colors'
+                                    >
+                                        <FaRegEye />
+                                    </button>
+                                    <button
+                                        onClick={() => setShowDeleteModal(order._id)}
+                                        disabled={deleteLoading === order._id || order.status === 'Shipped' || order.status === 'Delivered'}
+                                        className='text-xl md:text-[23px] text-red-500 p-0 bg-transparent border-none hover:bg-transparent focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:text-red-700 transition-colors'
+                                    >
+                                        <RiDeleteBin6Line />
+                                    </button>
+                                    <button className='border-2 border-[#822BE2] text-sm md:text-[16px] rounded bg-[#822BE2] hover:bg-purple-200 hover:border-[#822BE2] hover:text-[#822BE2] hover:cursor-pointer text-white py-1 px-4 transition-colors'>Feedback</button>
+                                </div>
+                            </div>
                             <hr className='mt-4 w-full md:w-[50%] mx-auto text-[#D9D9D9] pb-5 md:ml-[25%]' />
                         </div>
                     ))
@@ -212,7 +222,7 @@ function Page() {
                                     <p className="text-gray-600">{new Date(viewOrder.orderedAt).toLocaleDateString()}</p>
                                 </div>
                                 <div>
-                                    <span className="font-semibold">Total Amount:</span>
+                                    <span className="font-semibold">Total Paid:</span>
                                     <p className="text-gray-600 font-semibold">US ${viewOrder.total?.toFixed(2) || '0.00'}</p>
                                 </div>
                             </div>
@@ -232,10 +242,39 @@ function Page() {
                                             <div className="flex-1">
                                                 <h5 className="font-medium">{item.product?.name || item.name}</h5>
                                                 <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                                                <p className="text-sm font-semibold">US ${item.price?.toFixed(2) || '0.00'}</p>
+                                                <p className="text-sm font-semibold">US ${(item.price * item.quantity)?.toFixed(2) || '0.00'}</p>
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                                
+                                {/* Price Breakdown */}
+                                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                    <h5 className="font-semibold mb-2">Payment Breakdown:</h5>
+                                    <div className="space-y-1 text-sm">
+                                        {viewOrder.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between">
+                                                <span>{item.product?.name || item.name} × {item.quantity}</span>
+                                                <span>US ${(item.price * item.quantity)?.toFixed(2) || '0.00'}</span>
+                                            </div>
+                                        ))}
+                                        {(viewOrder.shippingCost && viewOrder.shippingCost > 0) ? (
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>Shipping</span>
+                                                <span>US ${viewOrder.shippingCost?.toFixed(2) || '0.00'}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>Shipping</span>
+                                                <span>US $10.00</span>
+                                            </div>
+                                        )}
+                                        <hr className="my-2" />
+                                        <div className="flex justify-between font-semibold">
+                                            <span>Total Paid</span>
+                                            <span>US ${viewOrder.total?.toFixed(2) || '0.00'}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

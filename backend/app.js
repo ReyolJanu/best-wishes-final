@@ -21,6 +21,8 @@ const userRoutes = require('./routes/userRoutes');
 const collaborativePurchaseRoutes = require('./routes/collaborativePurchaseRoutes');
 const diagnosticRoutes = require('./routes/diagnosticRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const customizationRoutes = require('./routes/customizationRoutes');
+const testRoutes = require('./routes/testRoutes');
 
 const orderSummaryRoutes = require('./routes/orderSummaryRoutes');
 
@@ -66,6 +68,8 @@ app.use('/api/collaborative-purchases', collaborativePurchaseRoutes);
 app.use('/api', userRoutes);
 app.use('/api/diagnostic', diagnosticRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/customizations', customizationRoutes);
+app.use('/api/test', testRoutes);
 
 app.use('/api/order-summary', orderSummaryRoutes);
 

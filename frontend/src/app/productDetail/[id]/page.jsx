@@ -295,6 +295,17 @@ function ProductDetailPage() {
               <button onClick={handleAddToCart} className='flex justify-center items-center border text-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold'>
                 Add to cart <LuShoppingCart />
               </button>
+              
+              {/* Customize Button for Customizable Products */}
+              {product.isCustomizable && (
+                <button
+                  className="flex justify-center items-center border text-white bg-[#FFA500] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:bg-[#FF8C00]"
+                  onClick={() => router.push(`/customize/${product._id}`)}
+                >
+                  <span>🎨</span> Customize This {product.customizationType || 'Product'}
+                </button>
+              )}
+
               <button
                 className="flex justify-center items-center border text-white bg-[#822BE2] rounded-[8px] w-full h-[50px] gap-2 font-bold cursor-pointer hover:opacity-90"
                 onClick={() => router.push(`/payment?productId=${product._id}&qty=${quantity}`)}

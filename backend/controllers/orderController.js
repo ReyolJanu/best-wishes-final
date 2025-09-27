@@ -21,7 +21,7 @@ exports.getUserOrderHistory = async (req, res) => {
 // Create order (after successful payment)
 exports.createOrder = async (req, res) => {
   try {
-    const { items, total, status } = req.body;
+    const { items, total, status, subtotal, shippingCost } = req.body;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Items are required' });
     }
@@ -29,21 +29,55 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Total must be a number' });
     }
 
-    const normalizedItems = items.map((i) => ({
-      product: i.productId || i.product || (i.product && i.product._id),
-      name: i.name || (i.product && i.product.name) || '',
-      price: i.price ?? (i.product && (i.product.salePrice > 0 ? i.product.salePrice : i.product.retailPrice)) ?? 0,
-      quantity: i.quantity || 1,
-      image: i.image || (i.product && i.product.images && (i.product.images[0]?.url || i.product.images[0])) || ''
-    }));
+    const normalizedItems = items.map((i) => {
+      const item = {
+        product: i.productId || i.product || (i.product && i.product._id),
+        name: i.name || (i.product && i.product.name) || '',
+        price: i.price ?? (i.product && (i.product.salePrice > 0 ? i.product.salePrice : i.product.retailPrice)) ?? 0,
+        quantity: i.quantity || 1,
+        image: i.image || (i.product && i.product.images && (i.product.images[0]?.url || i.product.images[0])) || ''
+      };
+      
+      // Add customization data if present
+      if (i.customization) {
+        item.customization = i.customization;
+      }
+      
+      return item;
+    });
+
+    // Calculate subtotal if not provided
+    const calculatedSubtotal = subtotal || normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const calculatedShippingCost = shippingCost !== undefined ? shippingCost : (calculatedSubtotal > 0 ? 10 : 0);
 
     const order = await Order.create({
       user: req.user._id,
       items: normalizedItems,
+      subtotal: calculatedSubtotal,
+      shippingCost: calculatedShippingCost,
       total,
       status: status || 'Pending',
       orderedAt: new Date(),
     });
+
+    // Update customization statuses if present
+    for (const item of normalizedItems) {
+      if (item.customization && item.customization.id) {
+        try {
+          const Customization = require('../models/Customization');
+          await Customization.findByIdAndUpdate(
+            item.customization.id,
+            { 
+              status: 'confirmed',
+              order: order._id
+            }
+          );
+        } catch (error) {
+          console.error('Error updating customization status:', error);
+          // Don't fail the main operation
+        }
+      }
+    }
 
     // Create notification for order creation
     try {

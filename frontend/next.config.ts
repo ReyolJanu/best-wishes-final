@@ -38,8 +38,17 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "via.placeholder.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
-    domains: ["res.cloudinary.com", "cloudinary.com", "example.com"],
+    domains: ["res.cloudinary.com", "cloudinary.com", "example.com", "via.placeholder.com"],
+    unoptimized: false,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 };
 

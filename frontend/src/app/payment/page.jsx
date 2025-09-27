@@ -13,7 +13,8 @@ import CollaborativePurchaseModal from "../modal/CollaborativePurchaseModal/Coll
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 console.log("stripePromise:", stripePromise);
-function PaymentForm({ clientSecret, amount, currency, product, qty }) {
+console.log("Stripe Publishable Key:", process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "✅ Present" : "❌ Missing");
+function PaymentForm({ clientSecret, amount, currency, product, qty, shipping, customization }) {
 	const stripe = useStripe();
 	const elements = useElements();
 	const router = useRouter();
@@ -22,12 +23,29 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		if (!stripe || !elements) return;
+		if (!stripe || !elements) {
+			toast.error("Stripe not initialized properly");
+			return;
+		}
+		
+		if (!clientSecret) {
+			toast.error("Payment not initialized. Please refresh and try again.");
+			return;
+		}
+		
 		setIsLoading(true);
+		console.log("🔄 Starting payment confirmation with clientSecret:", clientSecret);
+		
 		try {
+			const cardElement = elements.getElement(CardElement);
+			if (!cardElement) {
+				throw new Error("Card element not found");
+			}
+
+			console.log("💳 Confirming payment with Stripe...");
 			const result = await stripe.confirmCardPayment(clientSecret, {
 				payment_method: {
-					card: elements.getElement(CardElement),
+					card: cardElement,
 					billing_details: {
 						name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || undefined,
 						email: user?.email || undefined,
@@ -35,37 +53,65 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 				},
 			});
 
+			console.log("💰 Payment result:", result);
+
 			if (result.error) {
+				console.error("❌ Payment failed:", result.error);
 				toast.error(result.error.message || "Payment failed");
 			} else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
+				console.log("✅ Payment succeeded, creating order...");
 				// Create order after successful payment
 				try {
+					const basePrice = product.salePrice > 0 ? product.salePrice : product.retailPrice;
+					const customizationPrice = customization ? (product.customizationPrice || 0) : 0;
+					const itemPrice = basePrice + customizationPrice;
+					const productTotal = itemPrice * qty;
+					const shippingCost = shipping || 10;
+					
 					const orderData = {
 						items: [{
 							productId: product._id,
 							name: product.name,
-							price: (product.salePrice > 0 ? product.salePrice : product.retailPrice),
+							price: itemPrice,
 							quantity: qty,
-							image: (product.images && product.images[0] && (product.images[0].url || product.images[0])) || "/placeholder.svg"
+							image: (product.images && product.images[0] && (product.images[0].url || product.images[0])) || "/placeholder.svg",
+							...(customization && { customization: {
+								id: customization._id,
+								selectedQuote: customization.selectedQuote,
+								customMessage: customization.customMessage,
+								fontStyle: customization.fontStyle,
+								fontSize: customization.fontSize,
+								fontColor: customization.fontColor
+							}})
 						}],
+						subtotal: productTotal,
+						shippingCost: shippingCost,
 						total: amount,
-						status: "Processing"
+						status: "Processing",
+						...(customization && { customizationId: customization._id })
 					};
 
-					await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, orderData, {
+					console.log("📝 Creating order with data:", orderData);
+					const orderResponse = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, orderData, {
 						withCredentials: true
 					});
 
+					console.log("📋 Order created:", orderResponse.data);
 					toast.success("Payment successful! Order created.");
+					
+					// Wait a moment before redirecting
+					setTimeout(() => {
+						router.push("/user/history");
+					}, 2000);
 				} catch (orderError) {
-					console.error("Failed to create order:", orderError);
+					console.error("❌ Failed to create order:", orderError);
+					console.error("Order error details:", orderError.response?.data);
 					toast.error("Payment successful, but failed to create order record. Please contact support.");
 				}
-				
-				router.push("/user/history");
 			}
 		} catch (err) {
-			toast.error("Payment error");
+			console.error("❌ Payment error:", err);
+			toast.error(err.message || "Payment error");
 		} finally {
 			setIsLoading(false);
 		}
@@ -81,7 +127,7 @@ function PaymentForm({ clientSecret, amount, currency, product, qty }) {
 				className="w-full h-[50px] rounded-[8px] bg-[#822BE2] text-white font-bold disabled:opacity-50"
 				disabled={!stripe || isLoading}
 			>
-				{isLoading ? "Processing..." : `Pay ${currency.toUpperCase()} ${amount.toFixed(2)}`}
+				{isLoading ? "Processing..." : `Pay ${currency.toUpperCase()} ${(amount || 0).toFixed(2)}`}
 			</button>
 		</form>
 	);
@@ -91,44 +137,83 @@ export default function PaymentPage() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const productId = searchParams.get("productId");
+	const customizationId = searchParams.get("customizationId");
 	const qty = parseInt(searchParams.get("qty") || "1", 10);
 	const { user } = useSelector((state) => state.userState);
 	const [product, setProduct] = useState(null);
+	const [customization, setCustomization] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [clientSecret, setClientSecret] = useState("");
 	const [showCollaborativeModal, setShowCollaborativeModal] = useState(false);
 
 	useEffect(() => {
-		const fetchProduct = async () => {
-			if (!productId) return;
+		const fetchData = async () => {
 			try {
 				setLoading(true);
-				const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/${productId}`);
-				if (res.data?.success) setProduct(res.data.data);
+				
+				if (customizationId) {
+					// Fetch customization data (includes product data)
+					const customizationRes = await axios.get(
+						`${process.env.NEXT_PUBLIC_API_URL}/customizations/${customizationId}`,
+						{
+							withCredentials: true
+						}
+					);
+					if (customizationRes.data?.success) {
+						setCustomization(customizationRes.data.data);
+						setProduct(customizationRes.data.data.product);
+					}
+				} else if (productId) {
+					// Fetch regular product data
+					const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/products/${productId}`);
+					if (res.data?.success) setProduct(res.data.data);
+				}
 			} catch (e) {
 				console.error(e);
-				toast.error("Failed to load product");
+				toast.error("Failed to load product data");
 			} finally {
 				setLoading(false);
 			}
 		};
-		fetchProduct();
-	}, [productId]);
+		
+		if (productId || customizationId) {
+			fetchData();
+		}
+	}, [productId, customizationId]);
 
 	const { amount, currency, shipping } = useMemo(() => {
-		const price = product ? (product.salePrice > 0 ? product.salePrice : product.retailPrice) : 0;
-		const shippingCost = product ? 10 : 0;
+		if (!product) return { amount: 0, currency: "usd", shipping: 0 };
+		
+		const basePrice = Number(product.salePrice > 0 ? product.salePrice : product.retailPrice) || 0;
+		const customizationPrice = customization ? Number(product.customizationPrice || 0) : 0;
+		const totalPrice = basePrice + customizationPrice;
+		const shippingCost = 10;
+		const quantity = Number(qty) || 1;
+		
+		const finalAmount = totalPrice * quantity + shippingCost;
+		
+		console.log('Price calculation:', {
+			basePrice,
+			customizationPrice,
+			totalPrice,
+			quantity,
+			shippingCost,
+			finalAmount,
+			isValid: !isNaN(finalAmount)
+		});
+		
 		return {
-			amount: price * (isNaN(qty) ? 1 : qty) + shippingCost,
+			amount: isNaN(finalAmount) ? 0 : finalAmount,
 			currency: "usd",
 			shipping: shippingCost,
 		};
-	}, [product, qty]);
+	}, [product, qty, customization]);
 
 	useEffect(() => {
 		const createIntent = async () => {
 			if (!product || !amount) return;
 			try {
+				console.log("🚀 Creating payment intent with amount:", Math.round(amount * 100), "cents");
 				const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/payments/create-intent`, {
 					amount: Math.round(amount * 100),
 					currency,
@@ -138,10 +223,13 @@ export default function PaymentPage() {
 						name: product.name,
 					},
 				}, { withCredentials: true });
+				
+				console.log("✅ Payment intent created:", res.data);
 				setClientSecret(res.data.clientSecret);
 			} catch (e) {
-				console.error(e);
-				toast.error("Failed to initialize payment");
+				console.error("❌ Failed to create payment intent:", e);
+				console.error("Error details:", e.response?.data);
+				toast.error(e.response?.data?.message || "Failed to initialize payment");
 			}
 		};
 		createIntent();
@@ -211,9 +299,20 @@ export default function PaymentPage() {
 								</div>
 								<div className='flex-1'>
 									<h3 className='font-semibold'>{product.name}</h3>
+									{customization && (
+										<div className='text-sm text-[#5C5C5C] mt-1'>
+											<p>✨ Customized Product</p>
+											{customization.selectedQuote && (
+												<p className='italic'>"{customization.selectedQuote}"</p>
+											)}
+											{customization.customMessage && (
+												<p className='italic'>Custom: "{customization.customMessage}"</p>
+											)}
+										</div>
+									)}
 									<p className='text-sm text-[#5C5C5C]'>Quantity: {isNaN(qty) ? 1 : qty}</p>
-									<p className='text-sm text-[#5C5C5C]'>Shipping: US ${shipping.toFixed(2)}</p>
-									<p className='font-semibold mt-1'>Total: US ${amount.toFixed(2)}</p>
+									<p className='text-sm text-[#5C5C5C]'>Shipping: US ${(shipping || 0).toFixed(2)}</p>
+									<p className='font-semibold mt-1'>Total: US ${(amount || 0).toFixed(2)}</p>
 								</div>
 							</div>
 						)}
@@ -221,7 +320,7 @@ export default function PaymentPage() {
 
 					<div className='w-full lg:w-[40%] space-y-4'>
 						<div className='p-5 border-2 border-[#D9D9D9] rounded-[10px]'>
-						{amount.toFixed(2) >= 50 ? (
+						{(amount || 0) >= 50 ? (
 							<>
 								<h2 className='text-xl font-semibold mb-3'>Payment Options</h2>
 								
@@ -265,7 +364,15 @@ export default function PaymentPage() {
 									<h3 className='font-semibold mb-3'>💳 Individual Payment</h3>
 									{clientSecret && (
 										<Elements options={{ clientSecret }} stripe={stripePromise}>
-											<PaymentForm clientSecret={clientSecret} amount={amount} currency={currency} product={product} qty={qty} />
+											<PaymentForm 
+												clientSecret={clientSecret} 
+												amount={amount} 
+												currency={currency} 
+												product={product} 
+												qty={qty}
+												shipping={shipping}
+												customization={customization}
+											/>
 										</Elements>
 									)}
 									{!clientSecret && (
@@ -289,14 +396,22 @@ export default function PaymentPage() {
 							<div>
 								<h2 className='text-xl font-semibold mb-3'>Payment Options</h2>
 								<p className='text-sm text-gray-600 mb-4'>
-									Minimum order amount is $50 for collaborative purchases. Your current total is ${amount.toFixed(2)}.
+									Minimum order amount is $50 for collaborative purchases. Your current total is ${(amount || 0).toFixed(2)}.
 								</p>
 								{/* Individual Payment Option */}
 								<div className='border-t pt-4'>
 									<h3 className='font-semibold mb-3'>💳 Individual Payment</h3>
 									{clientSecret && (
 										<Elements options={{ clientSecret }} stripe={stripePromise}>
-											<PaymentForm clientSecret={clientSecret} amount={amount} currency={currency} product={product} qty={qty} />
+											<PaymentForm 
+												clientSecret={clientSecret} 
+												amount={amount} 
+												currency={currency} 
+												product={product} 
+												qty={qty}
+												shipping={shipping}
+												customization={customization}
+											/>
 										</Elements>
 									)}
 									{!clientSecret && (

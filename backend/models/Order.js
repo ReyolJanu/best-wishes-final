@@ -5,7 +5,21 @@ const orderItemSchema = new mongoose.Schema({
   name: String,
   price: Number,
   quantity: { type: Number, default: 1 },
-  image: String
+  image: String,
+  customization: {
+    id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customization' },
+    selectedQuote: {
+      id: String,
+      text: String,
+      category: String
+    },
+    customMessage: String,
+    fontStyle: String,
+    fontSize: Number,
+    fontColor: String,
+    previewImage: String,
+    specialInstructions: String
+  }
 });
 
 const statusHistorySchema = new mongoose.Schema({
@@ -18,7 +32,9 @@ const statusHistorySchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [orderItemSchema],
-  total: { type: Number, required: true },
+  subtotal: { type: Number }, // Items total before shipping
+  shippingCost: { type: Number, default: 0 }, // Shipping cost
+  total: { type: Number, required: true }, // Final total including shipping
   status: { type: String, enum: ['Pending', 'Processing', 'Packing', 'Shipped', 'Delivered', 'Cancelled'], default: 'Pending' },
   orderedAt: { type: Date, default: Date.now },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

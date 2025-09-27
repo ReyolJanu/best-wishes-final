@@ -35,6 +35,17 @@ const productSchema = new mongoose.Schema({
   seoTitle: String,
   seoDescription: String,
   rating: { type: Number, default: 3 },
+  isCustomizable: { type: Boolean, default: false },
+  customizationType: { 
+    type: String, 
+    enum: ["mug", "birthday-card", "anniversary-card", "general-card"],
+    required: function() { return this.isCustomizable; }
+  },
+  customizationPrice: { 
+    type: Number, 
+    default: 0,
+    required: function() { return this.isCustomizable; }
+  },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 }, {
