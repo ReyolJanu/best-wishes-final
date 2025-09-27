@@ -50,6 +50,12 @@ const orderSummarySchema = new mongoose.Schema({
   orderDate: {
     type: Date,
     default: Date.now
+  },
+  status: {
+    type: String,
+    required: true,
+    enum: ['order', 'surprisegift'],
+    default: 'order'
   }
 }, {
   timestamps: true
