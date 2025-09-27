@@ -146,7 +146,7 @@ export function FilterSidebar() {
 
   // Set initial category from URL parameter
   useEffect(() => {
-    if (initialCategory && initialCategory !== category) {
+    if (initialCategory && initialCategory !== category && categoriesData.length > 0) {
       handleCategoryChange(initialCategory)
     }
   }, [initialCategory, categoriesData])
@@ -181,6 +181,12 @@ export function FilterSidebar() {
     // Note: The logic expects a category NAME, not a key.
     console.log('Category name changed to:', newCategoryName)
     
+    // Ensure categoriesData is loaded before processing
+    if (categoriesData.length === 0) {
+      console.log('Categories data not loaded yet, skipping category change')
+      return;
+    }
+    
     let mainCategoryKey = categoriesData.find(c => c.name === newCategoryName)?.key || ""
     let initialFilters = {};
     
@@ -193,16 +199,22 @@ export function FilterSidebar() {
         setSelectedFilters(initialFilters);
         dispatch(setFilter({ key: attribute, values: [value] }));
         // console.log(`It's a subcategory. Parent: ${mainCategoryKey}, Filter: ${attribute}=${value}`);
+      } else {
+        // If no category key found and it's not a subcategory, use the fallback pattern
+        mainCategoryKey = newCategoryName;
       }
     }
     
     dispatch(setCategory(newCategoryName)) // Keep sending name to store for display
     
-    // Fetch products for the new category from database
-    await fetchFilteredProducts({
-      category: mainCategoryKey, // Use the key for filtering
-      filters: initialFilters // Reset filters or apply subcategory filter
-    })
+    // Only fetch if we have a valid category
+    if (mainCategoryKey) {
+      console.log('Fetching products for category key:', mainCategoryKey);
+      await fetchFilteredProducts({
+        category: mainCategoryKey, // Use the key for filtering
+        filters: initialFilters // Reset filters or apply subcategory filter
+      })
+    }
   }
 
   // Handle filter change with real-time database filtering
@@ -221,7 +233,7 @@ export function FilterSidebar() {
     dispatch(setFilter({ key: filterKey, values: newValues }))
     
     // Fetch filtered products from database
-    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || ""
+    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || category
     await fetchFilteredProducts({
       category: currentCategoryKey,
       filters: updatedFilters
@@ -245,7 +257,7 @@ export function FilterSidebar() {
     dispatch(setFilter({ key: "price", values: priceRange }))
     
     // Fetch filtered products from database
-    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || ""
+    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || category
     await fetchFilteredProducts({
       category: currentCategoryKey,
       filters: {
@@ -265,7 +277,7 @@ export function FilterSidebar() {
     dispatch(setFilter({ key: "rating", values: newRatings }))
     
     // Fetch filtered products from database
-    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || ""
+    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || category
     await fetchFilteredProducts({
       category: currentCategoryKey,
       filters: {
@@ -282,7 +294,7 @@ export function FilterSidebar() {
     dispatch(setFilter({ key: "discount", values: newValue }))
     
     // Fetch filtered products from database
-    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || ""
+    const currentCategoryKey = categoriesData.find(c => c.name === category)?.key || category
     await fetchFilteredProducts({
       category: currentCategoryKey,
       filters: {
