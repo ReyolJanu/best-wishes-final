@@ -1,7 +1,10 @@
 const Order = require('../models/Order');
+const Product = require('../models/Product');
+const OrderSummary = require('../models/OrderSummary');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
 const { createOrderStatusNotification } = require('./notificationController');
+const mongoose = require('mongoose');
 
 // Get order history for logged-in user
 exports.getUserOrderHistory = async (req, res) => {
@@ -171,35 +174,131 @@ exports.acceptOrder = async (req, res) => {
   }
 };
 
-// Update order status to Packing
+// Update order status to Packing with stock management and order summary creation
 exports.updateOrderToPacking = async (req, res) => {
+  const session = await mongoose.startSession();
+  
   try {
+    await session.startTransaction();
+    
     const { orderId } = req.body;
 
     if (!orderId) {
+      await session.abortTransaction();
       return res.status(400).json({ success: false, message: 'Order ID is required' });
     }
 
-    const order = await Order.findById(orderId).populate('user', 'email firstName lastName');
+    // Find the order and populate items with product details
+    const order = await Order.findById(orderId)
+      .populate('user', 'email firstName lastName')
+      .populate('items.product', 'name sku stock costPrice retailPrice salePrice')
+      .session(session);
 
     if (!order) {
+      await session.abortTransaction();
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
     if (order.status !== 'Processing') {
-      return res.status(400).json({ success: false, message: 'Order must be in Processing status to update to Packing' });
+      await session.abortTransaction();
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Order must be in Processing status to update to Packing' 
+      });
     }
 
+    // Validate stock for all items first
+    const stockValidationErrors = [];
+    const stockUpdates = [];
+    const orderSummaryEntries = [];
+
+    for (const item of order.items) {
+      if (!item.product) {
+        stockValidationErrors.push(`Product not found for item: ${item.name}`);
+        continue;
+      }
+
+      const product = item.product;
+      const requestedQuantity = item.quantity;
+      const availableStock = product.stock || 0;
+
+      if (availableStock < requestedQuantity) {
+        stockValidationErrors.push(`Insufficient stock for product: ${product.name}. Requested: ${requestedQuantity}, Available: ${availableStock}`);
+      } else {
+        // Prepare stock update
+        stockUpdates.push({
+          productId: product._id,
+          newStock: availableStock - requestedQuantity,
+          quantity: requestedQuantity
+        });
+
+        // Prepare order summary entry
+        const salePrice = product.salePrice > 0 ? product.salePrice : product.retailPrice;
+        const profit = salePrice - product.costPrice;
+        const totalProfit = profit * requestedQuantity;
+
+        orderSummaryEntries.push({
+          giftId: orderId, // Using order ID as gift ID for regular orders
+          productSKU: product.sku,
+          productId: product._id,
+          productName: product.name,
+          quantity: requestedQuantity,
+          costPrice: product.costPrice,
+          retailPrice: product.retailPrice,
+          salePrice: salePrice,
+          profit: profit,
+          totalProfit: totalProfit,
+          orderDate: order.orderedAt,
+          status: 'orders'
+        });
+      }
+    }
+
+    // If there are stock validation errors, abort the transaction
+    if (stockValidationErrors.length > 0) {
+      await session.abortTransaction();
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Stock validation failed',
+        errors: stockValidationErrors
+      });
+    }
+
+    // Update product stock
+    for (const update of stockUpdates) {
+      await Product.findByIdAndUpdate(
+        update.productId,
+        { 
+          $inc: { stock: -update.quantity },
+          $set: { 
+            stockStatus: update.newStock <= 0 ? 'out-of-stock' : 
+                        update.newStock <= 5 ? 'low-stock' : 'in-stock'
+          }
+        },
+        { session }
+      );
+    }
+
+    // Create order summary entries
+    if (orderSummaryEntries.length > 0) {
+      await OrderSummary.insertMany(orderSummaryEntries, { session });
+    }
+
+    // Update order status
     order.status = 'Packing';
     order.statusHistory.push({
       status: 'Packing',
-      updatedBy: req.user ? req.user._id : null, // Make updatedBy optional for now
+      updatedBy: req.user ? req.user._id : null,
       updatedAt: new Date(),
+      notes: `Stock reduced and order summary created for ${order.items.length} products`
     });
 
-    await order.save();
+    await order.save({ session });
 
-    // Create notification and send email
+    // Commit the transaction
+    await session.commitTransaction();
+
+    // Create notification and send email (outside transaction)
     try {
       await createOrderStatusNotification(
         order.user._id,
@@ -214,9 +313,27 @@ exports.updateOrderToPacking = async (req, res) => {
       // Don't fail the main operation if notification fails
     }
 
-    res.status(200).json({ success: true, message: 'Order status updated to Packing', order });
+    res.status(200).json({ 
+      success: true, 
+      message: `Order moved to Packing. Stock reduced for ${stockUpdates.length} products and order summary created.`,
+      order: {
+        id: order._id,
+        status: order.status,
+        stockUpdatesCount: stockUpdates.length,
+        orderSummaryEntriesCount: orderSummaryEntries.length
+      }
+    });
+
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to update order status', error: err.message });
+    await session.abortTransaction();
+    console.error('Error in updateOrderToPacking:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to update order to packing status', 
+      error: err.message 
+    });
+  } finally {
+    session.endSession();
   }
 };
 
