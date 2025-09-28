@@ -57,6 +57,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export function OrderManagementSystem() {
   const [orders, setOrders] = useState([])
+  const [surpriseGifts, setSurpriseGifts] = useState([])
+  const [collaborativeGifts, setCollaborativeGifts] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("accepted")
@@ -67,7 +69,40 @@ export function OrderManagementSystem() {
   const [toDate, setToDate] = useState(null)
   const [loadingStates, setLoadingStates] = useState({}) // Track loading state for each button
 
-  const filteredOrders = orders.filter((order) => {
+  // Combine all orders (regular orders, surprise gifts, collaborative gifts)
+  const allOrders = [
+    ...orders.map(order => ({ ...order, orderType: 'regular' })),
+    ...surpriseGifts.map(gift => ({
+      ...gift,
+      orderType: 'surprise',
+      id: gift._id,
+      createdAt: gift.createdAt || gift.orderDate,
+      orderDate: gift.createdAt || gift.orderDate,
+      recipientName: gift.recipientName || `${gift.user?.firstName || ''} ${gift.user?.lastName || ''}`.trim(),
+      recipientPhone: gift.recipientPhone || gift.user?.phone || 'N/A',
+      shippingAddress: gift.recipientAddress || gift.shippingAddress || 'Address not provided',
+      totalAmount: gift.total || 0,
+      customerName: gift.recipientName || `${gift.user?.firstName || ''} ${gift.user?.lastName || ''}`.trim(),
+      customerPhone: gift.recipientPhone || gift.user?.phone || 'N/A',
+      customerEmail: gift.user?.email || 'N/A',
+    })),
+    ...collaborativeGifts.map(gift => ({
+      ...gift,
+      orderType: 'collaborative',
+      id: gift._id,
+      createdAt: gift.createdAt || gift.orderDate,
+      orderDate: gift.createdAt || gift.orderDate,
+      recipientName: gift.recipientName || `${gift.user?.firstName || ''} ${gift.user?.lastName || ''}`.trim(),
+      recipientPhone: gift.recipientPhone || gift.user?.phone || 'N/A',
+      shippingAddress: gift.recipientAddress || gift.shippingAddress || 'Collaborative Purchase - Multiple Recipients',
+      totalAmount: gift.total || gift.totalAmount || 0,
+      customerName: `Collaborative Gift (${gift.participants?.length || 0} participants)`,
+      customerPhone: gift.user?.phone || 'N/A',
+      customerEmail: gift.user?.email || 'N/A',
+    }))
+  ];
+
+  const filteredOrders = allOrders.filter((order) => {
     if (!order || !order.user || !order.items) return false
 
     const matchesSearch =
@@ -102,10 +137,17 @@ export function OrderManagementSystem() {
 
   // Debug logging
   console.log('Active tab:', activeTab);
-  console.log('Total orders:', orders.length);
+  console.log('Total regular orders:', orders.length);
+  console.log('Total surprise gifts:', surpriseGifts.length);
+  console.log('Total collaborative gifts:', collaborativeGifts.length);
+  console.log('Total combined orders:', allOrders.length);
   console.log('Filtered orders:', filteredOrders.length);
-  console.log('Orders by status:', orders.reduce((acc, order) => {
+  console.log('Orders by status:', allOrders.reduce((acc, order) => {
     acc[order.status] = (acc[order.status] || 0) + 1;
+    return acc;
+  }, {}));
+  console.log('Orders by type:', allOrders.reduce((acc, order) => {
+    acc[order.orderType] = (acc[order.orderType] || 0) + 1;
     return acc;
   }, {}));
 
@@ -717,7 +759,7 @@ export function OrderManagementSystem() {
     }
   };
 
-  // New optimized print function for shipping labels
+  // New optimized print function for shipping labels (supports all order types)
   const printAllVisibleOrdersAsShippingLabels = (ordersToPrint) => {
     if (!ordersToPrint || ordersToPrint.length === 0) {
       alert('No orders to print');
@@ -727,11 +769,30 @@ export function OrderManagementSystem() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const getOrderTypeIcon = (orderType) => {
+      switch (orderType) {
+        case 'surprise': return '🎉 SURPRISE GIFT';
+        case 'collaborative': return '🤝 COLLABORATIVE GIFT';
+        default: return '📦 REGULAR ORDER';
+      }
+    };
+
+    const getOrderTypeColor = (orderType) => {
+      switch (orderType) {
+        case 'surprise': return '#ff6b6b';
+        case 'collaborative': return '#4ecdc4';
+        default: return '#6b46c1';
+      }
+    };
+
     const ordersHtml = ordersToPrint.map((order, index) => `
       <div class="shipping-label" ${index > 0 ? 'style="page-break-before: always;"' : ''}>
         <div class="header">
           <h1>🎁 GIFT COMMERCE</h1>
           <h2>SHIPPING LABEL</h2>
+          <div class="order-type" style="background-color: ${getOrderTypeColor(order.orderType)};">
+            ${getOrderTypeIcon(order.orderType)}
+          </div>
           <p>Order #${order.referenceCode || order._id}</p>
         </div>
 
@@ -763,6 +824,10 @@ export function OrderManagementSystem() {
               <span class="value">${order._id || order.id}</span>
             </div>
             <div class="info-row">
+              <span class="label">Order Type:</span>
+              <span class="value">${getOrderTypeIcon(order.orderType)}</span>
+            </div>
+            <div class="info-row">
               <span class="label">Order Date:</span>
               <span class="value">${new Date(order.createdAt || order.orderDate).toLocaleDateString()}</span>
             </div>
@@ -774,6 +839,12 @@ export function OrderManagementSystem() {
               <span class="label">Total Amount:</span>
               <span class="value total-amount">$${(order.total || order.totalAmount || 0).toFixed(2)}</span>
             </div>
+            ${order.orderType === 'collaborative' ? `
+              <div class="info-row">
+                <span class="label">Participants:</span>
+                <span class="value">${order.participants?.length || 0} people</span>
+              </div>
+            ` : ''}
           </div>
         </div>
 
@@ -782,11 +853,11 @@ export function OrderManagementSystem() {
           <div class="items-list">
             ${(order.items || []).map(item => `
               <div class="item-row">
-                <div class="item-name">${item.name || 'Unknown Product'}</div>
+                <div class="item-name">${item.name || item.productName || 'Unknown Product'}</div>
                 <div class="item-details">
                   <span>Qty: ${item.quantity || 1}</span>
-                  <span>Price: $${(item.price || 0).toFixed(2)}</span>
-                  <span>Total: $${((item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+                  <span>Price: $${(item.price || item.productPrice || 0).toFixed(2)}</span>
+                  <span>Total: $${((item.price || item.productPrice || 0) * (item.quantity || 1)).toFixed(2)}</span>
                 </div>
               </div>
             `).join('')}
@@ -795,7 +866,9 @@ export function OrderManagementSystem() {
 
         <div class="notes-section">
           ${order.notes ? `<div class="notes"><strong>Notes:</strong> ${order.notes}</div>` : ''}
-          ${order.isGift ? '<div class="gift-indicator">🎁 GIFT ORDER</div>' : ''}
+          ${order.orderType === 'surprise' ? '<div class="gift-indicator surprise-gift">🎉 SURPRISE GIFT ORDER</div>' : ''}
+          ${order.orderType === 'collaborative' ? '<div class="gift-indicator collaborative-gift">🤝 COLLABORATIVE GIFT ORDER</div>' : ''}
+          ${order.orderType === 'regular' && order.isGift ? '<div class="gift-indicator">🎁 GIFT ORDER</div>' : ''}
         </div>
 
         <div class="barcode-section">
@@ -841,6 +914,7 @@ export function OrderManagementSystem() {
               border-bottom: 2px solid #000;
               padding-bottom: 15px;
               margin-bottom: 20px;
+              position: relative;
             }
             
             .header h1 {
@@ -853,6 +927,16 @@ export function OrderManagementSystem() {
               font-size: 18px;
               margin: 0 0 10px 0;
               color: #666;
+            }
+            
+            .order-type {
+              display: inline-block;
+              color: white;
+              padding: 6px 12px;
+              border-radius: 15px;
+              font-size: 12px;
+              font-weight: bold;
+              margin: 5px 0;
             }
             
             .header p {
@@ -992,14 +1076,30 @@ export function OrderManagementSystem() {
             }
             
             .gift-indicator {
-              background: #d1ecf1;
-              border: 1px solid #bee5eb;
-              color: #0c5460;
               padding: 8px;
               border-radius: 5px;
               text-align: center;
               font-weight: bold;
               font-size: 14px;
+              margin-bottom: 10px;
+            }
+            
+            .gift-indicator {
+              background: #d1ecf1;
+              border: 1px solid #bee5eb;
+              color: #0c5460;
+            }
+            
+            .surprise-gift {
+              background: #ffe6e6;
+              border: 1px solid #ffcccc;
+              color: #cc0000;
+            }
+            
+            .collaborative-gift {
+              background: #e6f7f7;
+              border: 1px solid #cceeee;
+              color: #006666;
             }
             
             .barcode-section {
@@ -1134,7 +1234,63 @@ export function OrderManagementSystem() {
     }
 
     fetchAllOrders()
+    fetchSurpriseGifts()
+    fetchCollaborativeGifts()
   }, [])
+
+  // Fetch surprise gifts
+  const fetchSurpriseGifts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/surprise/all`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          console.log('Surprise gifts fetched:', data.data.length)
+          setSurpriseGifts(data.data)
+        } else {
+          console.error('Failed to fetch surprise gifts:', data.message)
+        }
+      } else {
+        console.error('Failed to fetch surprise gifts, status:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching surprise gifts:', error)
+    }
+  }
+
+  // Fetch collaborative gifts
+  const fetchCollaborativeGifts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/collaborative-purchases/all`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          console.log('Collaborative gifts fetched:', data.data.length)
+          setCollaborativeGifts(data.data)
+        } else {
+          console.error('Failed to fetch collaborative gifts:', data.message)
+        }
+      } else {
+        console.error('Failed to fetch collaborative gifts, status:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching collaborative gifts:', error)
+    }
+  }
 
   // Set default 2-week filter for "All Orders" tab
   useEffect(() => {
@@ -1215,7 +1371,7 @@ export function OrderManagementSystem() {
       </header>
 
       <div className="p-6 space-y-6">
-        <DashboardStats orders={orders} />
+        <DashboardStats orders={allOrders} />
 
         {/* Enhanced Order Management */}
         <Card>
@@ -1304,12 +1460,22 @@ export function OrderManagementSystem() {
                                 <div className="font-medium text-blue-600">{order.referenceCode}</div>
                                 <div className="text-sm text-muted-foreground">{order.orderId}</div>
                                 <div className="flex gap-1">
-                                  <Badge variant="outline" className={priorityColors[order.priority]}>
-                                    {order.priority}
+                                  <Badge variant="outline" className={priorityColors[order.priority || 'normal']}>
+                                    {order.priority || 'normal'}
                                   </Badge>
                                   <Badge variant="outline" className="text-xs">
-                                    {order.orderSource}
+                                    {order.orderSource || 'online'}
                                   </Badge>
+                                  {order.orderType === 'surprise' && (
+                                    <Badge variant="outline" className="text-xs bg-red-50 text-red-600 border-red-200">
+                                      🎉 Surprise
+                                    </Badge>
+                                  )}
+                                  {order.orderType === 'collaborative' && (
+                                    <Badge variant="outline" className="text-xs bg-teal-50 text-teal-600 border-teal-200">
+                                      🤝 Collaborative
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   {new Date(order.orderDate).toLocaleDateString()}
