@@ -41,10 +41,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Textarea } from "../../../components/ui/textarea"
 import { toast } from "react-hot-toast"
 import { cn } from "../../../lib/utils"
+import RoleManagerHeader from "./components/RoleManagerHeader"
 
 export default function RolesManagement() {
   const { loading, withLoading } = useLoading()
-  const [staffUsers, setStaffUsers] = useState([])
+  const [allUsers, setAllUsers] = useState([])
   const [selectedUser, setSelectedUser] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
@@ -52,15 +53,15 @@ export default function RolesManagement() {
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [blockReason, setBlockReason] = useState("")
-  const [activeTab, setActiveTab] = useState("delivery-staff")
+  const [activeTab, setActiveTab] = useState("admins")
   const [showPassword, setShowPassword] = useState(false)
 
-  // Fetch staff users on component mount
+  // Fetch users on component mount
   useEffect(() => {
-    fetchStaffUsers()
+    fetchAllUsers()
   }, [])
 
-  const fetchStaffUsers = async () => {
+  const fetchAllUsers = async () => {
     await withLoading(async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, {
@@ -69,11 +70,18 @@ export default function RolesManagement() {
         const data = await response.json()
         
         if (data.users) {
-          // Filter for staff roles (deliveryStaff and inventoryManager)
-          const staffOnly = data.users.filter(user => 
-            user.role === 'deliveryStaff' || user.role === 'inventoryManager'
+          // Debug: Log all users and their roles
+          console.log('All users from API:', data.users.map(u => ({ email: u.email, role: u.role })));
+          
+          // Filter for staff and admin roles (admin, deliveryStaff and inventoryManager)
+          const staffAndAdminUsers = data.users.filter(user => 
+            user.role === 'deliveryStaff' || user.role === 'inventoryManager' || user.role === 'admin'
           )
-          setStaffUsers(staffOnly)
+          
+          // Debug: Log filtered users
+          console.log('Filtered users:', staffAndAdminUsers.map(u => ({ email: u.email, role: u.role })));
+          
+          setAllUsers(staffAndAdminUsers)
         }
       } catch (error) {
         console.error('Error fetching staff users:', error)
@@ -98,7 +106,7 @@ export default function RolesManagement() {
 
       if (response.ok) {
         toast.success(`User ${shouldBlock ? 'blocked' : 'unblocked'} successfully`)
-        fetchStaffUsers() // Refresh the list
+        fetchAllUsers() // Refresh the list
         setShowBlockDialog(false)
         setBlockReason("")
       } else {
@@ -160,7 +168,7 @@ export default function RolesManagement() {
 
       if (response.ok) {
         toast.success('User details updated successfully')
-        fetchStaffUsers() // Refresh the list
+        fetchAllUsers() // Refresh the list
         setEditingUser(null)
       } else {
         throw new Error('Failed to update user details')
@@ -200,8 +208,14 @@ export default function RolesManagement() {
     }
   }
 
-  const deliveryStaff = staffUsers.filter(user => user.role === 'deliveryStaff')
-  const inventoryManagers = staffUsers.filter(user => user.role === 'inventoryManager')
+  const deliveryStaff = allUsers.filter(user => user.role === 'deliveryStaff')
+  const inventoryManagers = allUsers.filter(user => user.role === 'inventoryManager')
+  const adminUsers = allUsers.filter(user => user.role === 'admin')
+
+  // Debug: Log the filtered arrays
+  console.log('Admin users:', adminUsers.length, adminUsers.map(u => u.email));
+  console.log('Delivery staff:', deliveryStaff.length, deliveryStaff.map(u => u.email));
+  console.log('Inventory managers:', inventoryManagers.length, inventoryManagers.map(u => u.email));
 
   const UserCard = ({ user }) => (
     <Card className="bg-white border-gray-200 hover:shadow-lg transition-all duration-200 h-full">
@@ -342,13 +356,15 @@ export default function RolesManagement() {
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Roles Management</h1>
-            <p className="text-gray-600">Manage delivery staff and inventory managers</p>
-          </div>
+          <RoleManagerHeader onUserCreated={fetchAllUsers}>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Roles Management</h1>
+              <p className="text-gray-600">Manage admins, delivery staff, and inventory managers</p>
+            </div>
+          </RoleManagerHeader>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
             <Card className="bg-white border-gray-200">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3">
@@ -356,8 +372,22 @@ export default function RolesManagement() {
                     <Users className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Staff</p>
-                    <p className="text-2xl font-bold text-gray-900">{staffUsers.length}</p>
+                    <p className="text-sm text-gray-500">Total Users</p>
+                    <p className="text-2xl font-bold text-gray-900">{allUsers.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-gray-200">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <Shield className="h-6 w-6 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Admins</p>
+                    <p className="text-2xl font-bold text-gray-900">{adminUsers.length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -400,7 +430,7 @@ export default function RolesManagement() {
                   <div>
                     <p className="text-sm text-gray-500">Blocked Users</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {staffUsers.filter(user => user.isBlocked).length}
+                      {allUsers.filter(user => user.isBlocked).length}
                     </p>
                   </div>
                 </div>
@@ -408,12 +438,31 @@ export default function RolesManagement() {
             </Card>
           </div>
 
-          {/* Staff Tabs */}
+          {/* User Role Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="admins">Admins ({adminUsers.length})</TabsTrigger>
               <TabsTrigger value="delivery-staff">Delivery Staff ({deliveryStaff.length})</TabsTrigger>
               <TabsTrigger value="inventory-managers">Inventory Managers ({inventoryManagers.length})</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="admins" className="space-y-6">
+              {adminUsers.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
+                  {adminUsers.map((user) => (
+                    <UserCard key={user._id} user={user} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="bg-white border-gray-200">
+                  <CardContent className="p-12 text-center">
+                    <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Admins Found</h3>
+                    <p className="text-gray-500">No admin users are currently registered.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
             <TabsContent value="delivery-staff" className="space-y-6">
               {deliveryStaff.length > 0 ? (
