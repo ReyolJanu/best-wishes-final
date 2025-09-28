@@ -227,21 +227,21 @@ export default function InventoryProductDetail() {
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span>Cost Price:</span>
-                <span>${product.costPrice}</span>
+                <span>£{product.costPrice}</span>
               </div>
               <div className="flex justify-between">
                 <span>Retail Price:</span>
-                <span>${product.retailPrice}</span>
+                <span>£{product.retailPrice}</span>
               </div>
               {product.salePrice > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Sale Price:</span>
-                  <span>${product.salePrice}</span>
+                  <span>£{product.salePrice}</span>
                 </div>
               )}
               <div className="flex justify-between font-medium border-t pt-2">
                 <span>Current Price:</span>
-                <span>${product.salePrice > 0 ? product.salePrice : product.retailPrice}</span>
+                <span>£{product.salePrice > 0 ? product.salePrice : product.retailPrice}</span>
               </div>
             </CardContent>
           </Card>

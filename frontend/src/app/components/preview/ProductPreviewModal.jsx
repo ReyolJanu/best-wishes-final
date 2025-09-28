@@ -93,7 +93,7 @@ export default function ProductPreviewModal({ product, categories, occasions, re
                 <div className="text-center">
                   <Truck className="w-6 h-6 mx-auto mb-2 text-primary" />
                   <p className="text-xs font-medium">Free Shipping</p>
-                  <p className="text-xs text-muted-foreground">On orders over $50</p>
+                  <p className="text-xs text-muted-foreground">On orders over £50</p>
                 </div>
                 <div className="text-center">
                   <Shield className="w-6 h-6 mx-auto mb-2 text-primary" />
@@ -138,8 +138,8 @@ export default function ProductPreviewModal({ product, categories, occasions, re
               {/* Price */}
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl font-bold text-primary">${product.salePrice}</span>
-                  <span className="text-xl text-muted-foreground line-through">${product.retailPrice}</span>
+                  <span className="text-3xl font-bold text-primary">£{product.salePrice}</span>
+                  <span className="text-xl text-muted-foreground line-through">£{product.retailPrice}</span>
                   <Badge variant="destructive">{discountPercentage}% OFF</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">

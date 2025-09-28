@@ -182,7 +182,7 @@ const SurpriseGiftPaymentModal = ({
           {giftData && (
             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Order:</strong> {giftData.productName} - ${giftData.totalAmount}
+                <strong>Order:</strong> {giftData.productName} - £{giftData.totalAmount}
               </p>
             </div>
           )}
@@ -506,7 +506,7 @@ const SurpriseGiftPaymentModal = ({
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 )}
                 <span>
-                  {isLoading || isProcessing ? 'Processing...' : `Pay ${giftData ? `$${giftData.totalAmount}` : ''}`}
+                  {isLoading || isProcessing ? 'Processing...' : `Pay ${giftData ? `£${giftData.totalAmount}` : ''}`}
                 </span>
               </button>
             </div>

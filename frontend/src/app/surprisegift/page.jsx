@@ -182,7 +182,7 @@ function page() {
                                         </div>
                                         <div className='flex-1 flex-col pl-[10px]'>
                                             <p className='font-large line-clamp-2'>{ci.name}</p>
-                                            <p className='font-large font-semibold'>US ${Number(ci.price || 0).toFixed(2)}</p>
+                                            <p className='font-large font-semibold'>UK £{Number(ci.price || 0).toFixed(2)}</p>
                                         </div>
                                         <div className='flex flex-col items-end gap-3'>
                                             <div className='flex items-center gap-3'>
@@ -212,7 +212,7 @@ function page() {
                                 </div>
                                 <div className='flex-1 flex-col pl-[10px]'>
                                     <p className='font-large line-clamp-2'>{selectedProduct?.name}</p>
-                                    <p className='font-large font-semibold'>US ${price.toFixed(2)}</p>
+                                    <p className='font-large font-semibold'>UK £{price.toFixed(2)}</p>
                                 </div>
                                 <div className='flex flex-col items-end gap-3'>
                                     <div className='flex items-center gap-3'>
@@ -228,7 +228,7 @@ function page() {
                                     </div>
                                     <div className='text-right'>
                                         <span className='text-sm text-gray-700'>Subtotal:&nbsp;</span>
-                                        <span className='font-semibold'>US ${(price * quantity).toFixed(2)}</span>
+                                        <span className='font-semibold'>UK £{(price * quantity).toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -303,7 +303,7 @@ function page() {
                                     />
                                 </div>
                             </div>
-                            <div className='text-right text-sm text-gray-600 mt-2'>Total: US ${total.toFixed(2)}</div>
+                            <div className='text-right text-sm text-gray-600 mt-2'>Total: UK £{total.toFixed(2)}</div>
                             <button disabled={submitting} className={`h-[50px] w-full text-[18px] text-white font-semibold rounded-[8px] hover:cursor-pointer bg-[#822BE2] hover:bg-purple-600 mt-[10px] ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`} onClick={saveApplyHandler}>
                                 {submitting ? 'Saving...' : 'Save & Apply'}
                             </button>

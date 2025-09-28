@@ -204,12 +204,12 @@ export default function CollaborativePurchaseModal({
           {displayData.isMultiProduct ? (
             <>
               <p><strong>Items:</strong> <span className='text-purple-500'>{displayData.itemCount} products</span></p>
-              <p><strong>Total Price:</strong> <span className='text-purple-500'>${displayData.totalAmount.toFixed(2)}</span></p>
+              <p><strong>Total Price:</strong> <span className='text-purple-500'>£{displayData.totalAmount.toFixed(2)}</span></p>
               <div className="mt-2">
                 <p className="font-medium text-sm text-gray-600 mb-1">Products included:</p>
                 {displayData.products.map((item, index) => (
                   <p key={index} className="text-sm text-gray-500 ml-2">
-                    • {item.name} (Qty: {item.quantity}) - ${(item.price * item.quantity).toFixed(2)}
+                    • {item.name} (Qty: {item.quantity}) - £{(item.price * item.quantity).toFixed(2)}
                   </p>
                 ))}
               </div>
@@ -218,11 +218,11 @@ export default function CollaborativePurchaseModal({
             <>
               <p><strong>Product:</strong> <span className='text-purple-500'>{displayData.displayName.length > 35 ? displayData.displayName.slice(0, 35) + '...' : displayData.displayName}</span></p>
               <p><strong>Quantity:</strong> <span className='text-purple-500'>{displayData.quantity}</span></p>
-              <p><strong>Total Price:</strong> <span className='text-purple-500'>${displayData.totalAmount.toFixed(2)}</span></p>
+              <p><strong>Total Price:</strong> <span className='text-purple-500'>£{displayData.totalAmount.toFixed(2)}</span></p>
             </>
           )}
           <p><strong>Participants:</strong> <span className='text-purple-500'>{participantsCount}</span></p>
-          <p><strong>Each pays:</strong> <span className='text-purple-500'>${shareAmount}</span></p>
+          <p><strong>Each pays:</strong> <span className='text-purple-500'>£{shareAmount}</span></p>
         </div>
 
         <ul className="list-disc list-inside text-gray-700 space-y-2 text-sm mb-6">

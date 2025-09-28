@@ -311,8 +311,8 @@ export default function PaymentPage() {
 										</div>
 									)}
 									<p className='text-sm text-[#5C5C5C]'>Quantity: {isNaN(qty) ? 1 : qty}</p>
-									<p className='text-sm text-[#5C5C5C]'>Shipping: US ${(shipping || 0).toFixed(2)}</p>
-									<p className='font-semibold mt-1'>Total: US ${(amount || 0).toFixed(2)}</p>
+									<p className='text-sm text-[#5C5C5C]'>Shipping: UK £{(shipping || 0).toFixed(2)}</p>
+									<p className='font-semibold mt-1'>Total: UK £{(amount || 0).toFixed(2)}</p>
 								</div>
 							</div>
 						)}
@@ -396,7 +396,7 @@ export default function PaymentPage() {
 							<div>
 								<h2 className='text-xl font-semibold mb-3'>Payment Options</h2>
 								<p className='text-sm text-gray-600 mb-4'>
-									Minimum order amount is $50 for collaborative purchases. Your current total is ${(amount || 0).toFixed(2)}.
+									Minimum order amount is £50 for collaborative purchases. Your current total is £{(amount || 0).toFixed(2)}.
 								</p>
 								{/* Individual Payment Option */}
 								<div className='border-t pt-4'>

@@ -176,7 +176,7 @@ export default function CartPaymentPage() {
                                             <div className='flex-1'>
                                                 <h3 className='font-semibold'>{p.name}</h3>
                                                 <p className='text-sm text-[#5C5C5C]'>Qty: {item.quantity}</p>
-                                                <p className='font-medium'>US ${(price * item.quantity).toFixed(2)}</p>
+                                                <p className='font-medium'>UK £{(price * item.quantity).toFixed(2)}</p>
                                             </div>
                                         </div>
                                     );
@@ -184,11 +184,11 @@ export default function CartPaymentPage() {
                             )}
                             <div className='flex justify-between mt-3'>
                                 <span className='text-sm text-[#5C5C5C]'>Shipping</span>
-                                <span className='font-medium'>US ${shipping.toFixed(2)}</span>
+                                <span className='font-medium'>UK £{shipping.toFixed(2)}</span>
                             </div>
                             <div className='flex justify-between mt-1'>
                                 <span className='text-sm text-[#5C5C5C]'>Total</span>
-                                <span className='font-semibold'>US ${amount.toFixed(2)}</span>
+                                <span className='font-semibold'>UK £{amount.toFixed(2)}</span>
                             </div>
                             <div className='mt-4 flex flex-col sm:flex-row gap-3'>
                                 <button

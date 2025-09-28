@@ -465,7 +465,7 @@ export default function FancyCarousel() {
                     </div>
                     <div className="p-3">
                       <h3 className="font-medium text-sm sm:text-base truncate">{product.name}</h3>
-                      <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${product.price || product.retailPrice}</p>
+                      <p className="font-semibold text-purple-600 text-sm sm:text-base">UK £{product.price || product.retailPrice}</p>
                       <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
                         {Array.from({ length: 5 }, (_, i) => {
                           const fullStars = Math.floor(product.rating || 0);
@@ -516,7 +516,7 @@ export default function FancyCarousel() {
                     </div>
                     <div className="p-3">
                       <h3 className="font-medium text-sm sm:text-base truncate">Birthday Mug</h3>
-                      <p className="font-semibold text-purple-600 text-sm sm:text-base">US $25.75</p>
+                      <p className="font-semibold text-purple-600 text-sm sm:text-base">UK £25.75</p>
                       <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
                         <span>★★★★★</span>
                       </div>
@@ -623,7 +623,7 @@ export default function FancyCarousel() {
                     </div>
                     <div className="p-3">
                       <h3 className="font-medium text-sm sm:text-base truncate">{product.name}</h3>
-                      <p className="font-semibold text-purple-600 text-sm sm:text-base">US ${product.price || product.retailPrice}</p>
+                      <p className="font-semibold text-purple-600 text-sm sm:text-base">UK £{product.price || product.retailPrice}</p>
                       <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
                         <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
                           {Array.from({ length: 5 }, (_, i) => {

@@ -953,7 +953,7 @@ export default function ProfilePage() {
                                       <img src={image} alt={name} className="w-12 h-12 object-cover rounded-lg border" />
                                       <div className="flex-1">
                                         <div className="font-medium text-gray-900">{name}</div>
-                                        <div className="text-sm text-gray-500">Qty: {it.quantity || 1} • US ${Number(price).toFixed(2)}</div>
+                                        <div className="text-sm text-gray-500">Qty: {it.quantity || 1} • UK £{Number(price).toFixed(2)}</div>
                                       </div>
                                     </div>
                                   );
@@ -963,7 +963,7 @@ export default function ProfilePage() {
                               {/* Footer */}
                               <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
                                 <div className="text-sm text-gray-600">Total Amount</div>
-                                <div className="font-semibold text-gray-900">US ${Number(g.total || 0).toFixed(2)}</div>
+                                <div className="font-semibold text-gray-900">UK £{Number(g.total || 0).toFixed(2)}</div>
                               </div>
                               
                               {/* Payment Status & Action */}
@@ -1106,7 +1106,7 @@ export default function ProfilePage() {
             <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Product Price:</span>
-                <span className="font-semibold">${Number(selectedContribution.productPrice || selectedContribution.product?.salePrice || selectedContribution.product?.retailPrice || 0).toFixed(2)}</span>
+                <span className="font-semibold">£{Number(selectedContribution.productPrice || selectedContribution.product?.salePrice || selectedContribution.product?.retailPrice || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Quantity:</span>

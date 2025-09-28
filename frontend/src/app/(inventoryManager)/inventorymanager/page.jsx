@@ -141,7 +141,7 @@ export default function DashboardInventory () {
       customer: "Emma Johnson",
       date: "Jun 9, 2025",
       order: "ORD-1002",
-      amount: "$145.00",
+      amount: "£145.00",
       status: "Completed",
       items: "Birthday Gift Box, Greeting Card",
     },
@@ -149,14 +149,14 @@ export default function DashboardInventory () {
       customer: "Michael Smith",
       date: "Jun 8, 2025",
       order: "ORD-1001",
-      amount: "$350.00",
+      amount: "£350.00",
       items: "Wedding Decoration Package",
     },
     {
       customer: "Sophia Williams",
       date: "Jun 7, 2025",
       order: "ORD-1000",
-      amount: "$85.00",
+      amount: "£85.00",
       status: "Completed",
       items: "Custom Gift Basket",
     },
@@ -164,7 +164,7 @@ export default function DashboardInventory () {
       customer: "James Brown",
       date: "Jun 6, 2025",
       order: "ORD-999",
-      amount: "$210.00",
+      amount: "£210.00",
       status: "Delivered",
       items: "Party Lights (Rental), Balloons",
     },
@@ -453,7 +453,7 @@ export default function DashboardInventory () {
                 <ShoppingCart className="h-5 w-5 text-pink-500" />
                 <span className="text-sm text-gray-500">Total Sales</span>
               </div>
-              <div className="text-xl md:text-2xl font-bold text-gray-800">$12,345</div>
+              <div className="text-xl md:text-2xl font-bold text-gray-800">£12,345</div>
               <div className="text-xs text-green-600 mt-1">↑ 12% from last month</div>
             </CardContent>
           </Card>

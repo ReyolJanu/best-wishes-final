@@ -292,7 +292,7 @@ export default function CollaborativePaymentPage() {
             <div className="flex-1">
               <h2 className="text-xl font-semibold mb-2">{collaborativePurchase.productName}</h2>
               <p className="mb-1 text-gray-700">Quantity: {collaborativePurchase.quantity}</p>
-              <p className="mb-1">Total Price: <span className="font-medium">${collaborativePurchase.totalAmount.toFixed(2)}</span></p>
+              <p className="mb-1">Total Price: <span className="font-medium">£{collaborativePurchase.totalAmount.toFixed(2)}</span></p>
               <p className="mb-1">Your Share: <span className="font-medium">${collaborativePurchase.shareAmount.toFixed(2)}</span></p>
               <p className="mb-1">Deadline: <span className="font-medium">{new Date(collaborativePurchase.deadline).toLocaleDateString()}</span></p>
             </div>

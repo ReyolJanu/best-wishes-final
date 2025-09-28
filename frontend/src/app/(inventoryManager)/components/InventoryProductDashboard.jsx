@@ -276,7 +276,7 @@ export default function InventoryProductDashboard() {
                 <h3 className="font-semibold text-lg mb-2 truncate">{product.name}</h3>
                 <p className="text-sm text-gray-600 mb-2">SKU: {product.sku}</p>
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-lg font-bold">${product.price}</span>
+                  <span className="text-lg font-bold">£{product.price}</span>
                   <Badge variant="outline">{product.mainCategory || product.category}</Badge>
                 </div>
                 <div className="flex justify-between items-center">

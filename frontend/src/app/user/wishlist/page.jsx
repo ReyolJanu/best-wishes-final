@@ -229,11 +229,11 @@ export default function WishlistPage() {
                       <div className="flex items-center justify-between mb-4">
                         <div>
                           <span className="text-xl font-bold text-purple-600">
-                            US ${getProductPrice(product).toFixed(2)}
+                            UK £{getProductPrice(product).toFixed(2)}
                           </span>
                           {product.retailPrice && product.retailPrice > getProductPrice(product) && (
                             <span className="ml-2 text-sm text-gray-500 line-through">
-                              US ${product.retailPrice.toFixed(2)}
+                              UK £{product.retailPrice.toFixed(2)}
                             </span>
                           )}
                         </div>

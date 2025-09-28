@@ -399,7 +399,7 @@ function ProductDetailPage() {
                 <div className="mt-2 px-1">
                   <h3 className="font-medium truncate">{product.name}</h3>
                   <p className="font-medium text-gray-700">
-                    US ${product.price || product.retailPrice}
+                    UK £{product.price || product.retailPrice}
                   </p>
                   <div className="flex text-yellow-400 text-xs sm:text-sm mt-1">
                     {Array.from({ length: 5 }, (_, i) => {

@@ -128,7 +128,7 @@ export default function CheckoutPage() {
                                         <div className='flex-1 flex flex-col sm:flex-row gap-4'>
                                             <div className='flex-1'>
                                                 <p className='text-lg font-medium mb-2'>{item.product?.name || 'Unknown Product'}</p>
-                                                <p className='text-xl font-semibold text-[#822BE2] mb-2'>US ${getPrice(item.product).toFixed(2)}</p>
+                                                <p className='text-xl font-semibold text-[#822BE2] mb-2'>UK £{getPrice(item.product).toFixed(2)}</p>
                                                 <div className="flex text-yellow-400 text-sm">
                                                     {Array.from({ length: 5 }, (_, i) => {
                                                         const fullStars = Math.floor(item.product.rating || 0);
@@ -170,7 +170,7 @@ export default function CheckoutPage() {
                                                 </div>
                                                 <div className='flex justify-between items-center pt-2 border-t border-gray-200'>
                                                     <span className='text-sm font-medium'>Total:</span> 
-                                                    <span className='text-lg font-semibold text-[#822BE2]'>US ${(getPrice(item.product) * getQuantity(item.quantity)).toFixed(2)}</span>
+                                                    <span className='text-lg font-semibold text-[#822BE2]'>UK £{(getPrice(item.product) * getQuantity(item.quantity)).toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -184,16 +184,16 @@ export default function CheckoutPage() {
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center">
                                                 <p className="text-sm sm:text-base text-gray-600">Shipping Fees</p>
-                                                <p className="text-sm sm:text-base font-semibold text-gray-800">US $10</p>
+                                                <p className="text-sm sm:text-base font-semibold text-gray-800">UK £10</p>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <p className="text-sm sm:text-base text-gray-600">Subtotal</p>
-                                                <p className="text-sm sm:text-base font-semibold text-gray-800">US ${safeTotal.toFixed(2)}</p>
+                                                <p className="text-sm sm:text-base font-semibold text-gray-800">UK £{safeTotal.toFixed(2)}</p>
                                             </div>
                                         </div>
                                         <div className='mt-6'>
                                             <button onClick={handleCheckout} className="h-12 w-full rounded-lg bg-[#822BE2] hover:bg-purple-200 hover:border-2 hover:border-[#822BE2] hover:text-[#822BE2] hover:cursor-pointer text-white font-bold text-lg transition-all duration-200">
-                                                Checkout US ${(safeTotal + 10).toFixed(2)}
+                                                Checkout UK £{(safeTotal + 10).toFixed(2)}
                                             </button>
                                         </div>
                                     </div>

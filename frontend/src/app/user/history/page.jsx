@@ -137,7 +137,7 @@ function Page() {
                                     </div>
                                 </div>
                                 <div className='flex flex-wrap md:flex-nowrap justify-between md:justify-evenly items-center w-full md:w-[60%] gap-2'>
-                                    <p className='font-semibold text-sm md:text-[16px]'>US ${order.total?.toFixed(2) || '0.00'}</p>
+                                    <p className='font-semibold text-sm md:text-[16px]'>UK £{order.total?.toFixed(2) || '0.00'}</p>
                                     <p className='text-sm md:text-[16px]'>{new Date(order.orderedAt).toLocaleDateString()}</p>
                                     <p className='text-sm md:text-[16px]'>{order.status}</p>
                                     <button
@@ -223,7 +223,7 @@ function Page() {
                                 </div>
                                 <div>
                                     <span className="font-semibold">Total Paid:</span>
-                                    <p className="text-gray-600 font-semibold">US ${viewOrder.total?.toFixed(2) || '0.00'}</p>
+                                    <p className="text-gray-600 font-semibold">UK £{viewOrder.total?.toFixed(2) || '0.00'}</p>
                                 </div>
                             </div>
 
@@ -242,7 +242,7 @@ function Page() {
                                             <div className="flex-1">
                                                 <h5 className="font-medium">{item.product?.name || item.name}</h5>
                                                 <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                                                <p className="text-sm font-semibold">US ${(item.price * item.quantity)?.toFixed(2) || '0.00'}</p>
+                                                <p className="text-sm font-semibold">UK £{(item.price * item.quantity)?.toFixed(2) || '0.00'}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -255,24 +255,24 @@ function Page() {
                                         {viewOrder.items.map((item, idx) => (
                                             <div key={idx} className="flex justify-between">
                                                 <span>{item.product?.name || item.name} × {item.quantity}</span>
-                                                <span>US ${(item.price * item.quantity)?.toFixed(2) || '0.00'}</span>
+                                                <span>UK £{(item.price * item.quantity)?.toFixed(2) || '0.00'}</span>
                                             </div>
                                         ))}
                                         {(viewOrder.shippingCost && viewOrder.shippingCost > 0) ? (
                                             <div className="flex justify-between text-gray-600">
                                                 <span>Shipping</span>
-                                                <span>US ${viewOrder.shippingCost?.toFixed(2) || '0.00'}</span>
+                                                <span>UK £{viewOrder.shippingCost?.toFixed(2) || '0.00'}</span>
                                             </div>
                                         ) : (
                                             <div className="flex justify-between text-gray-600">
                                                 <span>Shipping</span>
-                                                <span>US $10.00</span>
+                                                <span>UK £10.00</span>
                                             </div>
                                         )}
                                         <hr className="my-2" />
                                         <div className="flex justify-between font-semibold">
                                             <span>Total Paid</span>
-                                            <span>US ${viewOrder.total?.toFixed(2) || '0.00'}</span>
+                                            <span>UK £{viewOrder.total?.toFixed(2) || '0.00'}</span>
                                         </div>
                                     </div>
                                 </div>
