@@ -789,7 +789,7 @@ const processRefunds = async (collaborativePurchase) => {
 const getAllCollaborativePurchases = async (req, res) => {
   try {
     const collaborativePurchases = await CollaborativePurchase.find({
-      status: { $in: ['Processing', 'pending', 'packing', 'outfordelivery', 'delivered', 'cancelled', 'refunded'] }
+      status: { $in: ['Processing', 'pending', 'completed', 'packing', 'outfordelivery', 'delivered', 'cancelled', 'refunded'] }
     })
     .populate('createdBy', 'firstName lastName email phone')
     .populate('products.product', 'name sku costPrice retailPrice salePrice stock')
@@ -839,6 +839,7 @@ const getAllCollaborativePurchases = async (req, res) => {
         total: purchase.totalAmount,
         status: purchase.status === 'Processing' ? 'Processing' :
                 purchase.status === 'pending' ? 'Pending' : 
+                purchase.status === 'completed' ? 'Pending' :
                 purchase.status === 'packing' ? 'Packing' :
                 purchase.status === 'outfordelivery' ? 'OutForDelivery' : 
                 purchase.status === 'delivered' ? 'Delivered' :
@@ -897,13 +898,22 @@ const startPacking = async (req, res) => {
     }
 
 
+    // Check if all participants have paid
+    const allParticipantsPaid = collaborativePurchase.participants.every(p => p.paymentStatus === 'paid');
+    if (!allParticipantsPaid) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot start packing. Not all participants have paid for this collaborative purchase.'
+      });
+    }
+
     // Check if status is pending or completed (ready for packing)
     if (collaborativePurchase.status !== 'pending' && collaborativePurchase.status !== 'completed') {
       await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: `Cannot start packing. Current status: ${collaborativePurchase.status}. Order must be in 'pending' or 'completed' status with all participants paid.`
-
       });
     }
 
@@ -980,7 +990,7 @@ const startPacking = async (req, res) => {
         profit: profit,
         totalProfit: totalProfit,
         orderDate: new Date(),
-        status: 'orders'
+        status: 'collaborative'
       });
 
       await orderSummary.save({ session });

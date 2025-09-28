@@ -153,12 +153,14 @@ export default function CollaborativeGiftManagement() {
       (activeTab === "pending" && (() => {
         const hasPending = gift.participants?.some(p => p.paymentStatus === 'pending');
         const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined;
-        const result = !isCancelled && hasPending;
+        const isRefunded = gift.status?.toLowerCase() === 'refunded';
+        const result = !isCancelled && !isRefunded && hasPending;
         // Debug logging for pending tab
         if (activeTab === "pending") {
           console.log(`Pending tab - Gift ${gift._id}:`, {
             hasPending,
             isCancelled,
+            isRefunded,
             participants: gift.participants?.map(p => ({ email: p.email, paymentStatus: p.paymentStatus })),
             result
           });
@@ -168,9 +170,8 @@ export default function CollaborativeGiftManagement() {
       (activeTab === "processing" && (() => {
         const allPaid = gift.participants?.every(p => p.paymentStatus === 'paid') && gift.participants?.length > 0;
         const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined;
-
-        return !isCancelled && ((gift.status?.toLowerCase() === 'pending' && allPaid) || gift.status?.toLowerCase() === 'completed');
-
+        const isRefunded = gift.status?.toLowerCase() === 'refunded';
+        return !isCancelled && !isRefunded && allPaid;
       })()) ||
       (activeTab === "packing" && gift.status?.toLowerCase() === 'packing') ||
       (activeTab === "deliveryConfirmed" && gift.status?.toLowerCase() === 'outfordelivery') ||
@@ -319,12 +320,14 @@ export default function CollaborativeGiftManagement() {
     pending: collaborativeGifts.filter(g => {
       const hasPending = g.participants?.some(p => p.paymentStatus === 'pending');
       const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
-      return !isCancelled && hasPending;
+      const isRefunded = g.status?.toLowerCase() === 'refunded';
+      return !isCancelled && !isRefunded && hasPending;
     }).length,
     processing: collaborativeGifts.filter(g => {
       const allPaid = g.participants?.every(p => p.paymentStatus === 'paid') && g.participants?.length > 0;
       const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
-      return !isCancelled && g.status?.toLowerCase() === 'pending' && allPaid;
+      const isRefunded = g.status?.toLowerCase() === 'refunded';
+      return !isCancelled && !isRefunded && allPaid;
     }).length,
     packing: collaborativeGifts.filter(g => g.status?.toLowerCase() === 'packing').length,
     delivered: collaborativeGifts.filter(g => g.status?.toLowerCase() === 'outfordelivery').length,
@@ -804,14 +807,16 @@ export default function CollaborativeGiftManagement() {
                 Pending ({collaborativeGifts.filter(g => {
                   const hasPending = g.participants?.some(p => p.paymentStatus === 'pending');
                   const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
-                  return !isCancelled && hasPending;
+                  const isRefunded = g.status?.toLowerCase() === 'refunded';
+                  return !isCancelled && !isRefunded && hasPending;
                 }).length})
               </TabsTrigger>
               <TabsTrigger value="processing" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                 Processing ({collaborativeGifts.filter(g => {
                   const allPaid = g.participants?.every(p => p.paymentStatus === 'paid') && g.participants?.length > 0;
                   const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
-                  return !isCancelled && g.status?.toLowerCase() === 'pending' && allPaid;
+                  const isRefunded = g.status?.toLowerCase() === 'refunded';
+                  return !isCancelled && !isRefunded && allPaid;
                 }).length})
               </TabsTrigger>
               <TabsTrigger value="packing" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
