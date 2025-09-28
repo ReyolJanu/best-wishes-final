@@ -406,17 +406,6 @@ const getNavigationData = (role) => {
     case "Inventory Manager":
   return [
     {
-      title: "Home",
-      icon: Home,
-      items: [
-        {
-          title: "Dashboard",
-          icon: BarChart3,
-          href: "/inventorymanager",
-        },
-      ],
-    },
-    {
       title: "Product Management",
       icon: ShoppingBag,
       items: [

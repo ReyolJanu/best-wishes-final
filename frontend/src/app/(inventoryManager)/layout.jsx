@@ -26,15 +26,15 @@ export default function RootLayout({ children }) {
       return;
     }
 
-    // If user has correct role but is not on the main dashboard page, redirect them
+    // If user has correct role and is on the old dashboard page, redirect to products
     if (user.role === 'inventoryManager' && pathname === '/inventorymanager') {
-      // User is already on correct dashboard, do nothing
+      router.push('/productsInventory');
       return;
     }
 
     // User has correct role, hide warning if it was shown
     setShowWarning(false);
-  }, [user, pathname]);
+  }, [user, pathname, router]);
 
   if (!user || user.role !== 'inventoryManager') {
     return (

@@ -168,7 +168,9 @@ export default function CollaborativeGiftManagement() {
       (activeTab === "processing" && (() => {
         const allPaid = gift.participants?.every(p => p.paymentStatus === 'paid') && gift.participants?.length > 0;
         const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined;
-        return !isCancelled && gift.status?.toLowerCase() === 'pending' && allPaid;
+
+        return !isCancelled && ((gift.status?.toLowerCase() === 'pending' && allPaid) || gift.status?.toLowerCase() === 'completed');
+
       })()) ||
       (activeTab === "packing" && gift.status?.toLowerCase() === 'packing') ||
       (activeTab === "deliveryConfirmed" && gift.status?.toLowerCase() === 'outfordelivery') ||

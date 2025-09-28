@@ -299,7 +299,7 @@ const processPayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment already processed' });
     }
 
-    if (collaborativePurchase.status !== 'pending') {
+    if (collaborativePurchase.status !== 'pending' && collaborativePurchase.status !== 'completed') {
       return res.status(400).json({ message: 'Collaborative purchase is no longer active' });
     }
 
@@ -321,7 +321,9 @@ const processPayment = async (req, res) => {
     if (allPaid) {
       // Create the actual order
       const order = await createOrderFromCollaborativePurchase(collaborativePurchase);
-      collaborativePurchase.status = 'pending'; // Ready for packing
+
+      collaborativePurchase.status = 'completed'; // Mark as completed, ready for admin to move to packing
+
       collaborativePurchase.completedAt = new Date();
       collaborativePurchase.orderId = order._id;
       
@@ -352,7 +354,7 @@ const declineParticipation = async (req, res) => {
 
     const collaborativePurchase = await CollaborativePurchase.findOne({
       'participants.paymentLink': paymentLink
-    });
+    }).populate('createdBy', 'email firstName lastName');
 
     if (!collaborativePurchase) {
       return res.status(404).json({ message: 'Collaborative purchase not found' });
@@ -413,7 +415,7 @@ const cancelCollaborativePurchase = async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const collaborativePurchase = await CollaborativePurchase.findById(id);
+    const collaborativePurchase = await CollaborativePurchase.findById(id).populate('createdBy', 'email firstName lastName');
     if (!collaborativePurchase) {
       return res.status(404).json({ message: 'Collaborative purchase not found' });
     }
@@ -422,7 +424,7 @@ const cancelCollaborativePurchase = async (req, res) => {
       return res.status(403).json({ message: 'Only the creator can cancel this collaborative purchase' });
     }
 
-    if (collaborativePurchase.status !== 'pending') {
+    if (collaborativePurchase.status !== 'pending' && collaborativePurchase.status !== 'completed') {
       return res.status(400).json({ message: 'Cannot cancel completed or already cancelled purchase' });
     }
 
@@ -455,25 +457,45 @@ const generatePaymentLink = () => {
 };
 
 const createOrderFromCollaborativePurchase = async (collaborativePurchase) => {
+  // Prepare items based on whether it's multi-product or single product
+  let orderItems = [];
+  let subtotal = 0;
+  
+  if (collaborativePurchase.isMultiProduct && collaborativePurchase.products && collaborativePurchase.products.length > 0) {
+    // Multi-product collaborative purchase
+    orderItems = collaborativePurchase.products.map(item => {
+      const itemTotal = item.productPrice * item.quantity;
+      subtotal += itemTotal;
+      return {
+        product: item.product,
+        name: item.productName,
+        price: item.productPrice,
+        quantity: item.quantity,
+        image: item.image
+      };
+    });
+  } else {
+    // Single product collaborative purchase
+    subtotal = collaborativePurchase.productPrice * collaborativePurchase.quantity;
+    orderItems = [{
+      product: collaborativePurchase.product,
+      name: collaborativePurchase.productName,
+      price: collaborativePurchase.productPrice,
+      quantity: collaborativePurchase.quantity
+    }];
+  }
+  
+  const shippingCost = 10; // Default shipping cost
+  const total = subtotal + shippingCost;
+  
   const order = await Order.create({
     user: collaborativePurchase.createdBy,
-    items: [{
-      product: collaborativePurchase.product,
-      quantity: collaborativePurchase.quantity,
-      price: collaborativePurchase.productPrice
-    }],
-    totalAmount: collaborativePurchase.totalAmount,
-    status: 'confirmed',
-    paymentStatus: 'paid',
-    shippingAddress: {
-      // You might want to collect this from the creator
-      street: 'Default Address',
-      city: 'Default City',
-      state: 'Default State',
-      zipCode: '00000',
-      country: 'Default Country'
-    },
-    collaborativePurchase: collaborativePurchase._id
+    items: orderItems,
+    subtotal: subtotal,
+    shippingCost: shippingCost,
+    total: total,
+    status: 'Processing', // Use correct enum value
+    // Remove invalid fields that don't exist in Order model
   });
 
   return order;
@@ -637,11 +659,17 @@ const sendCreatorConfirmationEmail = async (email, data) => {
 };
 
 const sendCompletionNotifications = async (collaborativePurchase, order) => {
-  // Send completion email to all participants
-  const allEmails = [
-    collaborativePurchase.createdBy.email,
-    ...collaborativePurchase.participants.map(p => p.email)
-  ];
+  try {
+    // Send completion email to all participants
+    const creatorEmail = collaborativePurchase.createdBy?.email;
+    const participantEmails = collaborativePurchase.participants.map(p => p.email).filter(email => email);
+    
+    const allEmails = creatorEmail ? [creatorEmail, ...participantEmails] : participantEmails;
+    
+    if (allEmails.length === 0) {
+      console.error('No valid email addresses found for completion notifications');
+      return;
+    }
 
   for (const email of allEmails) {
     await sendEmail({
@@ -682,16 +710,25 @@ const sendCompletionNotifications = async (collaborativePurchase, order) => {
       `
     });
   }
+  } catch (error) {
+    console.error('Error sending completion notifications:', error);
+  }
 };
 
 const sendCancellationNotifications = async (collaborativePurchase) => {
-  // Send cancellation email to all participants
-  const allEmails = [
-    collaborativePurchase.createdBy.email,
-    ...collaborativePurchase.participants.map(p => p.email)
-  ];
+  try {
+    // Send cancellation email to all participants
+    const creatorEmail = collaborativePurchase.createdBy?.email;
+    const participantEmails = collaborativePurchase.participants.map(p => p.email).filter(email => email);
+    
+    const allEmails = creatorEmail ? [creatorEmail, ...participantEmails] : participantEmails;
+    
+    if (allEmails.length === 0) {
+      console.error('No valid email addresses found for cancellation notifications');
+      return;
+    }
 
-  for (const email of allEmails) {
+    for (const email of allEmails) {
     await sendEmail({
       to: email,
       subject: `❌ Collaborative Purchase Cancelled`,
@@ -728,6 +765,9 @@ const sendCancellationNotifications = async (collaborativePurchase) => {
         </html>
       `
     });
+  }
+  } catch (error) {
+    console.error('Error sending cancellation notifications:', error);
   }
 };
 
@@ -855,12 +895,14 @@ const startPacking = async (req, res) => {
       });
     }
 
-    // Check if status is pending (ready for packing)
-    if (collaborativePurchase.status !== 'pending') {
+
+    // Check if status is pending or completed (ready for packing)
+    if (collaborativePurchase.status !== 'pending' && collaborativePurchase.status !== 'completed') {
       await session.abortTransaction();
       return res.status(400).json({
         success: false,
-        message: `Cannot start packing. Current status: ${collaborativePurchase.status}. Order must be in 'pending' status with all participants paid.`
+        message: `Cannot start packing. Current status: ${collaborativePurchase.status}. Order must be in 'pending' or 'completed' status with all participants paid.`
+
       });
     }
 
@@ -989,6 +1031,9 @@ const updateCollaborativeStatus = async (req, res) => {
     // Map frontend status to backend status
     const statusMapping = {
       'Pending': 'pending',
+
+      'Completed': 'completed',
+
       'Packing': 'packing', 
       'OutForDelivery': 'outfordelivery',
       'Delivered': 'delivered',
@@ -996,7 +1041,9 @@ const updateCollaborativeStatus = async (req, res) => {
     };
 
     const backendStatus = statusMapping[status] || status.toLowerCase();
-    const validStatuses = ['pending', 'packing', 'outfordelivery', 'delivered', 'cancelled'];
+
+    const validStatuses = ['pending', 'completed', 'packing', 'outfordelivery', 'delivered', 'cancelled'];
+
     
     if (!validStatuses.includes(backendStatus)) {
       return res.status(400).json({
