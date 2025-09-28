@@ -23,7 +23,7 @@ export function OrderDetailsDialog({
   order,
   isOpen,
   onClose,
-  onPrintCustomerDetails,
+  onPrintShippingLabel,
 }) {
   // Add null check at the beginning of the component
   if (!order || !order.id) {
@@ -290,7 +290,7 @@ export function OrderDetailsDialog({
 
           {/* Action Buttons - Print Only */}
           <div className="flex gap-3 pt-4 border-t">
-            <Button onClick={() => onPrintCustomerDetails && onPrintCustomerDetails(order)} className="flex-1" variant="outline">
+            <Button onClick={() => onPrintShippingLabel && onPrintShippingLabel([order])} className="flex-1" variant="outline">
               <Printer className="h-4 w-4 mr-2" />
               Print Complete Details
             </Button>

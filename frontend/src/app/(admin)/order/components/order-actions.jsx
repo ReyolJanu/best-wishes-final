@@ -8,7 +8,7 @@ export function OrderActions({
   onAcceptOrder,
   onRejectOrder,
   onPackingComplete,
-  onPrintCustomerDetails,
+  onPrintShippingLabel,
   children,
 }) {
   return (
@@ -47,8 +47,8 @@ export function OrderActions({
         </Button>
       )}
 
-      {/* Print customer details */}
-      <Button variant="ghost" size="sm" className="hover:bg-blue-50" onClick={() => onPrintCustomerDetails(order)}>
+      {/* Print shipping label */}
+      <Button variant="ghost" size="sm" className="hover:bg-blue-50" onClick={() => onPrintShippingLabel([order])}>
         <Printer className="h-4 w-4" />
       </Button>
 

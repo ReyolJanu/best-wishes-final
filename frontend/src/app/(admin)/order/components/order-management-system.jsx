@@ -122,15 +122,7 @@ export function OrderManagementSystem() {
     }))
   }
 
-  const testProductsEndpoint = async () => {
-    try {
-      console.log("Testing products endpoint...");
-      const response = await axios.get(`${API_BASE_URL}/products/test`);
-      console.log("Products test response:", response.data);
-    } catch (error) {
-      console.error("Error testing products endpoint:", error);
-    }
-  };
+
 
   const reduceProductStock = async (orderItems) => {
     try {
@@ -318,146 +310,6 @@ export function OrderManagementSystem() {
 
   const saveInternalNotes = (orderId) => {
     console.log(`Saving notes for order ${orderId}: ${internalNotes[orderId]}`)
-  }
-
-  const printCustomerDetails = (order) => {
-    const printWindow = window.open("", "_blank")
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Customer Details - ${order.referenceCode}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-              .section { margin-bottom: 25px; }
-              .label { font-weight: bold; color: #333; }
-              .items { border-collapse: collapse; width: 100%; margin-top: 10px; }
-              .items th, .items td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-              .items th { background-color: #f8f9fa; font-weight: bold; }
-              .priority-high { color: #dc3545; font-weight: bold; }
-              .priority-normal { color: #6c757d; }
-              .priority-low { color: #28a745; }
-              .cod-amount { background: #fff3cd; padding: 10px; border: 1px solid #ffeaa7; border-radius: 5px; margin: 10px 0; }
-              .instructions { background: #e7f3ff; padding: 10px; border-left: 4px solid #007bff; margin: 10px 0; }
-              .total-summary { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>🎁 Gift Commerce - Customer Details</h1>
-              <h2>Order: ${order.referenceCode}</h2>
-              <p>Order ID: ${order.orderId}</p>
-            </div>
-            
-            <div class="section">
-              <h3>📋 Order Information</h3>
-              <p><span class="label">Order Date:</span> ${new Date(order.orderDate).toLocaleString()}</p>
-              <p><span class="label">Status:</span> ${order.status.replace("_", " ").toUpperCase()}</p>
-              <p><span class="label">Priority:</span> <span class="priority-${order.priority}">${order.priority.toUpperCase()}</span></p>
-              <p><span class="label">Packing Status:</span> ${order.packingStatus.replace("_", " ").toUpperCase()}</p>
-              <p><span class="label">Order Source:</span> ${order.orderSource.replace("_", " ").toUpperCase()}</p>
-              <p><span class="label">Payment Method:</span> ${order.paymentMethod.replace("_", " ").toUpperCase()}</p>
-              ${order.assignedStaff ? `<p><span class="label">Assigned Staff:</span> ${order.assignedStaff}</p>` : ""}
-              ${order.trackingNumber ? `<p><span class="label">Tracking Number:</span> ${order.trackingNumber}</p>` : ""}
-            </div>
-            
-            <div class="section">
-              <h3>👤 Customer Information</h3>
-              <p><span class="label">Name:</span> ${order.customerName}</p>
-              <p><span class="label">Phone:</span> ${order.customerPhone}</p>
-              <p><span class="label">Email:</span> ${order.customerEmail}</p>
-              ${order.user?.address ? `<p><span class="label">Address:</span> ${order.user.address}</p>` : ""}
-              ${order.customerNotes ? `<p><span class="label">Customer Notes:</span> ${order.customerNotes}</p>` : ""}
-            </div>
-            
-            <div class="section">
-              <h3>📍 Delivery Information</h3>
-              <p><span class="label">Delivery Address:</span><br>${order.address}</p>
-              <p><span class="label">Billing Address:</span><br>${order.billingAddress}</p>
-              <p><span class="label">Estimated Time:</span> ${order.estimatedTime}</p>
-              <p><span class="label">Shipping Method:</span> ${order.shippingMethod.replace("_", " ").toUpperCase()}</p>
-              ${order.specialInstructions ? `<div class="instructions"><strong>⚠️ Special Instructions:</strong><br>${order.specialInstructions}</div>` : ""}
-            </div>
-            
-            <div class="section">
-              <h3>📦 Order Items (${order.items.length} items)</h3>
-              <table class="items">
-                <tr>
-                  <th>Item Name</th>
-                  <th>SKU</th>
-                  <th>Category</th>
-                  <th>Quantity</th>
-                  <th>Unit Price</th>
-                  <th>Total</th>
-                </tr>
-                ${order.items
-                  .map(
-                    (item) => `
-                  <tr>
-                    <td>${item.name}</td>
-                    <td>${item.sku}</td>
-                    <td>${item.category}</td>
-                    <td>${item.quantity}</td>
-                    <td>${item.price}</td>
-                    <td>${(item.price * item.quantity).toFixed(2)}</td>
-                  </tr>
-                `,
-                  )
-                  .join("")}
-              </table>
-            </div>
-            
-            <div class="section">
-              <h3>💰 Payment Summary</h3>
-              <div class="total-summary">
-                <p><span class="label">Subtotal:</span> $${order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</p>
-                <p><span class="label">Total Amount:</span> <strong>$${order.totalAmount}</strong></p>
-                ${order.codAmount > 0 ? `<div class="cod-amount"><strong>💵 COD Amount:</strong> $${order.codAmount}<br><em>Collect cash on delivery</em></div>` : "<p><span class='label'>Payment Status:</span> Paid Online ✅</p>"}
-              </div>
-            </div>
-            
-            ${
-              order.isGift
-                ? `
-              <div class="section">
-                <h3>🎁 Gift Details</h3>
-                <p><span class="label">Gift Order:</span> Yes ✅</p>
-                <p><span class="label">Gift Wrap:</span> ${order.giftWrap ? "Yes ✅" : "No ❌"}</p>
-                ${order.giftMessage ? `<div class="gift-message"><strong>💌 Gift Message:</strong><br>${order.giftMessage}</div>` : ""}
-              </div>
-            `
-                : `
-              <div class="section">
-                <h3>📦 Regular Order</h3>
-                <p>This is a regular order (not a gift)</p>
-              </div>
-            `
-            }
-            
-            ${
-              order.internalNotes
-                ? `
-            <div class="section">
-              <h3>📝 Internal Notes</h3>
-              <div class="instructions">${order.internalNotes}</div>
-            </div>
-            `
-                : ""
-            }
-            
-            <div class="section" style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px;">
-              <p><strong>📅 Printed on:</strong> ${new Date().toLocaleString()}</p>
-              <p><strong>🏢 Gift Commerce Admin System</strong></p>
-              <p><strong>📊 Total Items:</strong> ${order.items.reduce((sum, item) => sum + item.quantity, 0)} pieces</p>
-              <p><strong>⚖️ Total Weight:</strong> ${order.items.reduce((sum, item) => sum + Number.parseFloat(item.weight?.replace(' lbs', '') || '0'), 0).toFixed(1)} lbs</p>
-            </div>
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-      printWindow.print()
-    }
   }
 
   const printAllOrdersSequentially = async (orders) => {
@@ -865,6 +717,339 @@ export function OrderManagementSystem() {
     }
   };
 
+  // New optimized print function for shipping labels
+  const printAllVisibleOrdersAsShippingLabels = (ordersToPrint) => {
+    if (!ordersToPrint || ordersToPrint.length === 0) {
+      alert('No orders to print');
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const ordersHtml = ordersToPrint.map((order, index) => `
+      <div class="shipping-label" ${index > 0 ? 'style="page-break-before: always;"' : ''}>
+        <div class="header">
+          <h1>🎁 GIFT COMMERCE</h1>
+          <h2>SHIPPING LABEL</h2>
+          <p>Order #${order.referenceCode || order._id}</p>
+        </div>
+
+        <div class="shipping-info">
+          <div class="from-address">
+            <h3>📦 FROM:</h3>
+            <div class="address-box">
+              <strong>Gift Commerce</strong><br>
+              123 Business Street<br>
+              City, State 12345<br>
+              Phone: (555) 123-4567
+            </div>
+          </div>
+
+          <div class="to-address">
+            <h3>📍 TO:</h3>
+            <div class="address-box">
+              <strong>${order.recipientName || order.customerName || `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim()}</strong><br>
+              ${order.recipientPhone || order.customerPhone || order.user?.phone || 'N/A'}<br>
+              ${order.shippingAddress || order.address || 'Address not provided'}
+            </div>
+          </div>
+        </div>
+
+        <div class="order-details">
+          <div class="order-info">
+            <div class="info-row">
+              <span class="label">Order ID:</span>
+              <span class="value">${order._id || order.id}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Order Date:</span>
+              <span class="value">${new Date(order.createdAt || order.orderDate).toLocaleDateString()}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Status:</span>
+              <span class="value status-badge">${(order.status || 'processing').toUpperCase()}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Total Amount:</span>
+              <span class="value total-amount">$${(order.total || order.totalAmount || 0).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="items-section">
+          <h3>📋 ITEMS (${order.items?.length || 0} products)</h3>
+          <div class="items-list">
+            ${(order.items || []).map(item => `
+              <div class="item-row">
+                <div class="item-name">${item.name || 'Unknown Product'}</div>
+                <div class="item-details">
+                  <span>Qty: ${item.quantity || 1}</span>
+                  <span>Price: $${(item.price || 0).toFixed(2)}</span>
+                  <span>Total: $${((item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="notes-section">
+          ${order.notes ? `<div class="notes"><strong>Notes:</strong> ${order.notes}</div>` : ''}
+          ${order.isGift ? '<div class="gift-indicator">🎁 GIFT ORDER</div>' : ''}
+        </div>
+
+        <div class="barcode-section">
+          <div class="barcode-placeholder">|||| |||| |||| ||||</div>
+          <p>Tracking: ${order.trackingNumber || 'TRK' + (order._id || order.id).slice(-8).toUpperCase()}</p>
+        </div>
+
+        <div class="print-info">
+          <p>Printed on: ${new Date().toLocaleString()}</p>
+        </div>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Shipping Labels - ${ordersToPrint.length} Orders</title>
+          <style>
+            @page { 
+              margin: 0.3in; 
+              size: A4; 
+            }
+            
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 0; 
+              background: white;
+              color: #000;
+            }
+            
+            .shipping-label {
+              width: 100%;
+              min-height: 11in;
+              padding: 20px;
+              margin-bottom: 20px;
+              border: 2px solid #000;
+              box-sizing: border-box;
+            }
+            
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #000;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+            
+            .header h1 {
+              font-size: 24px;
+              margin: 0 0 5px 0;
+              font-weight: bold;
+            }
+            
+            .header h2 {
+              font-size: 18px;
+              margin: 0 0 10px 0;
+              color: #666;
+            }
+            
+            .header p {
+              font-size: 14px;
+              margin: 0;
+              font-weight: bold;
+            }
+            
+            .shipping-info {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 25px;
+            }
+            
+            .from-address, .to-address {
+              width: 48%;
+            }
+            
+            .from-address h3, .to-address h3 {
+              font-size: 14px;
+              margin: 0 0 8px 0;
+              color: #333;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 3px;
+            }
+            
+            .address-box {
+              border: 1px solid #000;
+              padding: 12px;
+              min-height: 80px;
+              background: #f9f9f9;
+              font-size: 13px;
+              line-height: 1.4;
+            }
+            
+            .order-details {
+              margin-bottom: 20px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+              padding: 15px;
+              background: #f8f9fa;
+            }
+            
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 8px;
+              padding: 5px 0;
+              border-bottom: 1px dotted #ccc;
+            }
+            
+            .info-row:last-child {
+              border-bottom: none;
+              margin-bottom: 0;
+            }
+            
+            .label {
+              font-weight: bold;
+              color: #333;
+            }
+            
+            .value {
+              color: #000;
+            }
+            
+            .status-badge {
+              background: #e3f2fd;
+              color: #1976d2;
+              padding: 2px 8px;
+              border-radius: 12px;
+              font-size: 11px;
+              font-weight: bold;
+            }
+            
+            .total-amount {
+              font-weight: bold;
+              font-size: 16px;
+              color: #d32f2f;
+            }
+            
+            .items-section {
+              margin-bottom: 20px;
+            }
+            
+            .items-section h3 {
+              font-size: 16px;
+              margin: 0 0 10px 0;
+              color: #333;
+              border-bottom: 2px solid #333;
+              padding-bottom: 5px;
+            }
+            
+            .items-list {
+              border: 1px solid #ddd;
+              border-radius: 5px;
+              overflow: hidden;
+            }
+            
+            .item-row {
+              padding: 10px 12px;
+              border-bottom: 1px solid #eee;
+              background: white;
+            }
+            
+            .item-row:last-child {
+              border-bottom: none;
+            }
+            
+            .item-row:nth-child(even) {
+              background: #f8f9fa;
+            }
+            
+            .item-name {
+              font-weight: bold;
+              margin-bottom: 5px;
+              color: #333;
+            }
+            
+            .item-details {
+              display: flex;
+              justify-content: space-between;
+              font-size: 12px;
+              color: #666;
+            }
+            
+            .notes-section {
+              margin-bottom: 20px;
+            }
+            
+            .notes {
+              background: #fff3cd;
+              border: 1px solid #ffeaa7;
+              padding: 10px;
+              border-radius: 5px;
+              margin-bottom: 10px;
+              font-size: 13px;
+            }
+            
+            .gift-indicator {
+              background: #d1ecf1;
+              border: 1px solid #bee5eb;
+              color: #0c5460;
+              padding: 8px;
+              border-radius: 5px;
+              text-align: center;
+              font-weight: bold;
+              font-size: 14px;
+            }
+            
+            .barcode-section {
+              text-align: center;
+              margin-bottom: 15px;
+              padding: 15px;
+              border: 1px solid #000;
+              background: white;
+            }
+            
+            .barcode-placeholder {
+              font-family: 'Courier New', monospace;
+              font-size: 24px;
+              font-weight: bold;
+              letter-spacing: 3px;
+              margin-bottom: 8px;
+            }
+            
+            .print-info {
+              text-align: center;
+              font-size: 11px;
+              color: #666;
+              border-top: 1px solid #ccc;
+              padding-top: 8px;
+            }
+            
+            @media print {
+              body { -webkit-print-color-adjust: exact; }
+              .shipping-label { 
+                page-break-after: always; 
+                page-break-inside: avoid; 
+              }
+              .shipping-label:last-child { 
+                page-break-after: avoid; 
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${ordersHtml}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
   useEffect(() => {
     const fetchAllOrders = async () => {
       try {
@@ -951,6 +1136,20 @@ export function OrderManagementSystem() {
     fetchAllOrders()
   }, [])
 
+  // Set default 2-week filter for "All Orders" tab
+  useEffect(() => {
+    if (activeTab === "all" && !fromDate && !toDate) {
+      const today = new Date();
+      const twoWeeksAgo = new Date(today.getTime() - (14 * 24 * 60 * 60 * 1000));
+      
+      // Format dates for input[type="date"]
+      const formatDate = (date) => date.toISOString().split('T')[0];
+      
+      setFromDate(formatDate(twoWeeksAgo));
+      setToDate(formatDate(today));
+    }
+  }, [activeTab, fromDate, toDate]);
+
   const printAllPackedOrders = () => {
     const packedOrders = orders.filter((order) => order.status === "packing");
 
@@ -1024,17 +1223,14 @@ export function OrderManagementSystem() {
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <CardTitle className="text-xl">Advanced Order Management System</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={testProductsEndpoint}>
-                  Test Products API
-                </Button>
-                {activeTab === "packed" && (
-                  <Button variant="outline" size="sm" onClick={printAllPackedOrders}>
+                {(activeTab === "packed" || activeTab === "processing" || activeTab === "accepted") && (
+                  <Button variant="outline" size="sm" onClick={() => printAllVisibleOrdersAsShippingLabels(filteredOrders)}>
                     <Printer className="h-4 w-4 mr-2" />
-                    Print All Packed
+                    Print All ({filteredOrders.length})
                   </Button>
                 )}
                 {activeTab === "all" && (
-                  <Button variant="outline" size="sm" onClick={() => printAllOrdersSequentially(filteredOrders)}>
+                  <Button variant="outline" size="sm" onClick={() => printAllVisibleOrdersAsShippingLabels(filteredOrders)}>
                     <Printer className="h-4 w-4 mr-2" />
                     Print All Filtered ({filteredOrders.length})
                   </Button>
@@ -1208,7 +1404,7 @@ export function OrderManagementSystem() {
                                   order={order}
                                   onRejectOrder={null} // Disable reject functionality
                                   onPackingComplete={null} // Disable packing complete functionality
-                                  onPrintCustomerDetails={printCustomerDetails} // Keep print functionality
+                                  onPrintShippingLabel={printAllVisibleOrdersAsShippingLabels} // Use new shipping label function
                                 >
                                   <DialogTrigger asChild>
                                     <Button
@@ -1230,7 +1426,7 @@ export function OrderManagementSystem() {
                                     onClose={() => setSelectedOrder(null)}
                                     onRejectOrder={null} // Disable reject functionality
                                     onPackingComplete={null} // Disable packing complete functionality
-                                    onPrintCustomerDetails={printCustomerDetails} // Keep print functionality
+                                    onPrintShippingLabel={printAllVisibleOrdersAsShippingLabels} // Use new shipping label function
                                     onUpdateQuantity={null} // Disable update quantity functionality
                                     onRemoveItem={null} // Disable remove item functionality
                                     onSaveInternalNotes={null} // Disable save internal notes functionality
