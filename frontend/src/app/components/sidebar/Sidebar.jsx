@@ -163,54 +163,39 @@ const getNavigationData = (role) => {
           icon: ShoppingCart,
           items: [
             { title: "View All Orders", icon: Eye, href: "/order" },
-            // {
-            //   title: "Edit Order Status",
-            //   icon: Edit,
-            //   href: "/admin/orders/status",
-            // },
-            // {
-            //   title: "Order Details",
-            //   icon: CreditCard,
-            //   href: "/admin/orders/details",
-            // },
-            // {
-            //   title: "Refunds & Cancellations",
-            //   icon: RefreshCw,
-            //   href: "/admin/orders/refunds",
-            // },
-            // {
-            //   title: "Order History",
-            //   icon: Clock,
-            //   href: "/admin/orders/history",
-            // },
-            // {
-            //   title: "Bulk Processing",
-            //   icon: Archive,
-            //   href: "/admin/orders/bulk",
-            // },
-          ],
-        },
-        {
-          title: "Surprise Gift Orders",
-          icon: Gift,
-          items: [
             {
+              title: "Collaborative Gift Orders",
+              icon: Gift,
+              href: "/collaborative-gift-orders",
+            },{
               title: "Manage Surprise Gifts",
               icon: Gift,
               href: "/surpriseGifts",
             },
-            // {
-            //   title: "Track Gift Orders",
-            //   icon: Eye,
-            //   href: "/surpriseGifts",
-            // },
-            // {
-            //   title: "Delivery Management",
-            //   icon: UserCheck,
-            //   href: "/surpriseGifts",
-            // }
+            
           ],
         },
+        // {
+        //   title: "Surprise Gift Orders",
+        //   icon: Gift,
+        //   items: [
+        //     {
+        //       title: "Manage Surprise Gifts",
+        //       icon: Gift,
+        //       href: "/surpriseGifts",
+        //     },
+        //     // {
+        //     //   title: "Track Gift Orders",
+        //     //   icon: Eye,
+        //     //   href: "/surpriseGifts",
+        //     // },
+        //     // {
+        //     //   title: "Delivery Management",
+        //     //   icon: UserCheck,
+        //     //   href: "/surpriseGifts",
+        //     // }
+        //   ],
+        // },
         {
           title: "Banner & Homepage",
           icon: ImageIcon,

@@ -97,7 +97,7 @@ const CollaborativePurchaseSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'cancelled', 'expired', 'refunded'],
+    enum: ['pending', 'completed', 'cancelled', 'expired', 'refunded', 'packing', 'outfordelivery', 'delivered'],
     default: 'pending',
   },
   createdAt: {

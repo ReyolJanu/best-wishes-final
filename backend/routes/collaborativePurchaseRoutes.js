@@ -1,7 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const collaborativePurchaseController = require('../controllers/collaborativePurchaseController');
-const { isAuthenticated } = require('../middleware/authMiddleware');
+const { isAuthenticated, authorizeRoles } = require('../middleware/authMiddleware');
+
+// Admin routes - Get all collaborative purchases
+router.get('/all', isAuthenticated, authorizeRoles('admin'), collaborativePurchaseController.getAllCollaborativePurchases);
+
+// Admin routes - Start packing process
+router.post('/:id/start-packing', isAuthenticated, authorizeRoles('admin'), collaborativePurchaseController.startPacking);
+
+// Admin routes - Update status
+router.put('/:id/status', isAuthenticated, authorizeRoles('admin'), collaborativePurchaseController.updateCollaborativeStatus);
 
 // Create collaborative purchase
 router.post('/', isAuthenticated, collaborativePurchaseController.createCollaborativePurchase);
