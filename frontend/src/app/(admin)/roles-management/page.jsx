@@ -70,17 +70,10 @@ export default function RolesManagement() {
         const data = await response.json()
         
         if (data.users) {
-          // Debug: Log all users and their roles
-          console.log('All users from API:', data.users.map(u => ({ email: u.email, role: u.role })));
-          
           // Filter for staff and admin roles (admin, deliveryStaff and inventoryManager)
           const staffAndAdminUsers = data.users.filter(user => 
             user.role === 'deliveryStaff' || user.role === 'inventoryManager' || user.role === 'admin'
           )
-          
-          // Debug: Log filtered users
-          console.log('Filtered users:', staffAndAdminUsers.map(u => ({ email: u.email, role: u.role })));
-          
           setAllUsers(staffAndAdminUsers)
         }
       } catch (error) {
@@ -212,11 +205,6 @@ export default function RolesManagement() {
   const inventoryManagers = allUsers.filter(user => user.role === 'inventoryManager')
   const adminUsers = allUsers.filter(user => user.role === 'admin')
 
-  // Debug: Log the filtered arrays
-  console.log('Admin users:', adminUsers.length, adminUsers.map(u => u.email));
-  console.log('Delivery staff:', deliveryStaff.length, deliveryStaff.map(u => u.email));
-  console.log('Inventory managers:', inventoryManagers.length, inventoryManagers.map(u => u.email));
-
   const UserCard = ({ user }) => (
     <Card className="bg-white border-gray-200 hover:shadow-lg transition-all duration-200 h-full">
       <CardContent className="p-6 flex flex-col h-full">
@@ -241,9 +229,19 @@ export default function RolesManagement() {
               <div className="mt-1">
                 <Badge 
                   variant="outline" 
-                  className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
+                  className={`text-xs px-2 py-0.5 ${
+                    user.role === 'admin' 
+                      ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                      : user.role === 'inventoryManager'
+                      ? 'bg-purple-50 text-purple-700 border-purple-200'  
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}
                 >
-                  {user.role === 'inventoryManager' ? 'Inventory Manager' : 'Delivery Staff'}
+                  {user.role === 'admin' 
+                    ? 'Admin' 
+                    : user.role === 'inventoryManager' 
+                    ? 'Inventory Manager' 
+                    : 'Delivery Staff'}
                 </Badge>
               </div>
             </div>
