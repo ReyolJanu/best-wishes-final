@@ -109,9 +109,9 @@ function Page() {
                 </div>
               )}
 
-              <span className='text-[14px] w-full flex justify-end cursor-pointer text-blue-600 hover:underline'>
+              <Link href='/forgot-password' className='text-[14px] w-full flex justify-end cursor-pointer text-blue-600 hover:underline'>
                 Forgot Password?
-              </span>
+              </Link>
 
               <button
                 type="submit"

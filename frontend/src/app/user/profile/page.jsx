@@ -18,6 +18,7 @@ import { clearWishlist } from '@/app/slices/wishlistSlice';
 import { fetchUserProfile } from '../../actions/userActions'; // import at the top
 import Footer from "../../components/footer/page";
 import SurpriseGiftPaymentModal from "../../modal/payment/SurpriseGiftPaymentModal";
+import ReminderGift from "../../modal/reminder/ReminderModal";
 
 export default function ProfilePage() {
   const { user } = useSelector(state => state.userState);
@@ -67,6 +68,9 @@ export default function ProfilePage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedSurpriseGift, setSelectedSurpriseGift] = useState(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+
+  // Reminder modal state
+  const [showReminderModal, setShowReminderModal] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -328,9 +332,13 @@ export default function ProfilePage() {
   };
 
   const openAddModal = () => {
-    setIsAddMode(true);
-    setEditReminder({});
-    setEditFields({ remindermsg: '', date: '', time: '', event: '' });
+    setShowReminderModal(true);
+  };
+
+  const closeReminderModal = () => {
+    setShowReminderModal(false);
+    // Refresh reminders after closing modal (in case a new reminder was added)
+    fetchReminders();
   };
 
   const openContributionModal = (contribution) => {
@@ -836,8 +844,8 @@ export default function ProfilePage() {
                           <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <FiGift className="w-8 h-8 text-purple-500" />
                           </div>
-                          <h4 className="text-lg font-medium text-gray-900 mb-2">No Contributions Yet</h4>
-                          <p className="text-gray-500 mb-4">You haven't participated in any collaborative gifts yet.</p>
+                          <h4 className="text-lg font-medium text-gray-900 mb-2">You can explore your dashboard</h4>
+                          <p className="text-gray-500 mb-4">All activites listed in dedicated page you can track that</p>
                           <a
                             href="/dashboard/collaborative-purchases"
                             className="inline-block px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
@@ -1091,8 +1099,27 @@ export default function ProfilePage() {
                 <div className="w-28 h-28 bg-gray-100 flex items-center justify-center rounded-lg border text-gray-400 mb-2">No Image</div>
               )}
               <h3 className="text-lg font-semibold text-purple-800 mb-1 text-center">{selectedContribution.product?.name || selectedContribution.productName}</h3>
-              <p className="text-gray-700 text-sm mb-1">Price: <span className="font-medium">Rs. {selectedContribution.productPrice || selectedContribution.product?.salePrice || selectedContribution.product?.retailPrice}</span></p>
               <p className="text-gray-500 text-xs mb-2">Deadline: {new Date(selectedContribution.deadline).toLocaleDateString()}</p>
+            </div>
+
+            {/* Detailed Information */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Product Price:</span>
+                <span className="font-semibold">${Number(selectedContribution.productPrice || selectedContribution.product?.salePrice || selectedContribution.product?.retailPrice || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Quantity:</span>
+                <span className="font-semibold">1</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Total Participants:</span>
+                <span className="font-semibold">{selectedContribution.participants ? selectedContribution.participants.length + 1 : 1}</span>
+              </div>
+              <div className="flex justify-between items-center border-t pt-2">
+                <span className="text-gray-600">Each Pays:</span>
+                <span className="font-bold text-purple-700">${Number(selectedContribution.share || 0).toFixed(2)}</span>
+              </div>
             </div>
             <div className="mb-3">
               <h4 className="font-semibold text-gray-800 mb-1">Participants</h4>
@@ -1135,6 +1162,11 @@ export default function ProfilePage() {
         onPaymentSuccess={processPayment}
         isProcessing={paymentProcessing}
       />
+
+      {/* Reminder Modal */}
+      {showReminderModal && (
+        <ReminderGift onClose={closeReminderModal} />
+      )}
 
     <Footer />
     </>

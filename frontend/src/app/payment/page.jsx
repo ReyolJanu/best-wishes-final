@@ -448,7 +448,7 @@ export default function PaymentPage() {
 					// Single product support
 					isMultiProduct={false}
 					productName={product?.name || ""}
-					productPrice={amount}
+					productPrice={Number(product.salePrice > 0 ? product.salePrice : product.retailPrice) + (customization ? Number(product.customizationPrice || 0) : 0)}
 					productID={product._id || productId}
 					quantity={qty}
 				/>

@@ -299,7 +299,7 @@ const processPayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment already processed' });
     }
 
-    if (collaborativePurchase.status !== 'Processing') {
+    if (collaborativePurchase.status !== 'pending') {
       return res.status(400).json({ message: 'Collaborative purchase is no longer active' });
     }
 
@@ -422,7 +422,7 @@ const cancelCollaborativePurchase = async (req, res) => {
       return res.status(403).json({ message: 'Only the creator can cancel this collaborative purchase' });
     }
 
-    if (collaborativePurchase.status !== 'Processing') {
+    if (collaborativePurchase.status !== 'pending') {
       return res.status(400).json({ message: 'Cannot cancel completed or already cancelled purchase' });
     }
 

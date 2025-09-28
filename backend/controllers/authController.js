@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require('../models/User');
 const Otp = require('../models/Otp');
+const { sendEmail } = require('../config/emailConfig');
 
 
 // Token generator--summa
@@ -313,5 +314,230 @@ exports.verifyOtp = async (req, res) => {
     return res.status(200).json({ success: true, message: 'OTP verified successfully' });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Forgot Password - Send Verification Code - {base_url}/api/forgot-password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an email address'
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No user found with this email address'
+      });
+    }
+
+    // Generate 6-digit verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Delete any existing OTP for this email
+    await Otp.deleteMany({ email });
+
+    // Save verification code to OTP collection
+    await Otp.create({
+      email,
+      otp: verificationCode
+    });
+
+    // Email message with verification code
+    const message = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
+          .header { background-color: #822BE2; color: white; padding: 20px; text-align: center; }
+          .content { padding: 30px; background-color: #f9f9f9; }
+          .code-box { 
+            background-color: #f0f0f0;
+            border: 2px dashed #822BE2;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 10px;
+          }
+          .verification-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #822BE2;
+            letter-spacing: 5px;
+            font-family: monospace;
+          }
+          .footer { padding: 20px; text-align: center; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Password Reset Verification</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${user.firstName},</h2>
+            <p>You have requested to reset your password for your Best Wishes account.</p>
+            <p>Please use the verification code below to proceed with password reset:</p>
+            <div class="code-box">
+              <div class="verification-code">${verificationCode}</div>
+            </div>
+            <p><strong>This code will expire in 5 minutes.</strong></p>
+            <p>Enter this code on the password reset page to continue.</p>
+            <p>If you didn't request this password reset, please ignore this email.</p>
+          </div>
+          <div class="footer">
+            <p>© 2025 Best Wishes. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Password Reset Verification Code - Best Wishes',
+        html: message
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Verification code sent to your email successfully'
+      });
+    } catch (error) {
+      console.error('Email send error:', error);
+      
+      // Delete the OTP if email fails
+      await Otp.deleteMany({ email });
+
+      return res.status(500).json({
+        success: false,
+        message: 'Email could not be sent. Please try again later.'
+      });
+    }
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong. Please try again.',
+      error: error.message
+    });
+  }
+};
+
+// Verify Reset Code - {base_url}/api/verify-reset-code
+exports.verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and verification code are required'
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No user found with this email address'
+      });
+    }
+
+    // Verify the OTP
+    const otpRecord = await Otp.findOne({ email, otp: code });
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code'
+      });
+    }
+
+    // Don't delete the OTP yet - keep it for password reset
+    res.status(200).json({
+      success: true,
+      message: 'Verification code is valid. You can now reset your password.'
+    });
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong. Please try again.',
+      error: error.message
+    });
+  }
+};
+
+// Reset Password with Verification Code - {base_url}/api/reset-password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, code, password, confirmPassword } = req.body;
+
+    if (!email || !code || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, verification code, password and confirm password are required'
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No user found with this email address'
+      });
+    }
+
+    // Verify the OTP one more time
+    const otpRecord = await Otp.findOne({ email, otp: code });
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code'
+      });
+    }
+
+    // Set new password
+    user.password = password;
+    await user.save();
+
+    // Delete the used OTP
+    await Otp.deleteOne({ _id: otpRecord._id });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successful. You can now login with your new password.'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong. Please try again.',
+      error: error.message
+    });
   }
 };
