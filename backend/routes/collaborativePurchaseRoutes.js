@@ -6,6 +6,9 @@ const { isAuthenticated, authorizeRoles } = require('../middleware/authMiddlewar
 // Admin routes - Get all collaborative purchases
 router.get('/all', isAuthenticated, authorizeRoles('admin'), collaborativePurchaseController.getAllCollaborativePurchases);
 
+// Admin routes - Print all delivered collaborative purchases
+router.get('/print-all-delivered', isAuthenticated, authorizeRoles('admin'), collaborativePurchaseController.printAllDeliveredCollaborativePurchases);
+
 // Admin routes - Start packing process
 router.post('/:id/start-packing', isAuthenticated, authorizeRoles('admin'), collaborativePurchaseController.startPacking);
 

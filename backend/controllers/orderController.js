@@ -107,7 +107,14 @@ exports.getAllOrders = async (req, res) => {
       .populate('items.product', 'name images salePrice retailPrice')
       .populate('user', 'firstName lastName email phone address') // Include firstName and lastName in user details
       .sort({ orderedAt: -1 });
-    res.status(200).json({ success: true, orders });
+    
+    // Map orders to include totalAmount field for frontend compatibility
+    const mappedOrders = orders.map(order => ({
+      ...order.toObject(),
+      totalAmount: order.total
+    }));
+    
+    res.status(200).json({ success: true, orders: mappedOrders });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to fetch all orders', error: err.message });
   }

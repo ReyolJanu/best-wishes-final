@@ -749,7 +749,7 @@ const processRefunds = async (collaborativePurchase) => {
 const getAllCollaborativePurchases = async (req, res) => {
   try {
     const collaborativePurchases = await CollaborativePurchase.find({
-      status: { $in: ['Processing', 'pending', 'packing', 'outfordelivery', 'delivered'] }
+      status: { $in: ['Processing', 'pending', 'packing', 'outfordelivery', 'delivered', 'cancelled', 'refunded'] }
     })
     .populate('createdBy', 'firstName lastName email phone')
     .populate('products.product', 'name sku costPrice retailPrice salePrice stock')
@@ -802,7 +802,8 @@ const getAllCollaborativePurchases = async (req, res) => {
                 purchase.status === 'packing' ? 'Packing' :
                 purchase.status === 'outfordelivery' ? 'OutForDelivery' : 
                 purchase.status === 'delivered' ? 'Delivered' :
-                purchase.status === 'cancelled' ? 'Cancelled' : 'Pending',
+                purchase.status === 'cancelled' ? 'Cancelled' :
+                purchase.status === 'refunded' ? 'Refunded' : 'Pending',
         createdAt: purchase.createdAt,
         items: items,
         participants: purchase.participants,
@@ -1048,6 +1049,118 @@ const updateCollaborativeStatus = async (req, res) => {
   }
 };
 
+const printAllDeliveredCollaborativePurchases = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.query;
+
+    // Build query for delivered collaborative purchases
+    let query = { status: 'delivered' };
+
+    // Apply date filters if provided
+    if (fromDate || toDate) {
+      query.createdAt = {};
+      if (fromDate) {
+        query.createdAt.$gte = new Date(fromDate);
+      }
+      if (toDate) {
+        query.createdAt.$lte = new Date(toDate);
+      }
+    } else {
+      // Default: last 2 weeks
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      query.createdAt = { $gte: twoWeeksAgo };
+    }
+
+    const collaborativePurchases = await CollaborativePurchase.find(query)
+      .populate('createdBy', 'firstName lastName email phone address')
+      .populate('products.product', 'name sku')
+      .populate('product', 'name sku')
+      .sort({ createdAt: -1 });
+
+    // Format collaborative purchases for printing
+    const printData = collaborativePurchases.map(purchase => {
+      const items = [];
+
+      if (purchase.isMultiProduct && purchase.products && purchase.products.length > 0) {
+        // Multi-product purchase
+        items.push(...purchase.products.map(prod => ({
+          name: prod.productName,
+          sku: prod.product?.sku || prod.product?._id?.toString().slice(-6) || 'N/A',
+          quantity: prod.quantity,
+          price: prod.productPrice,
+          subtotal: prod.productPrice * prod.quantity
+        })));
+      } else if (purchase.product) {
+        // Single product purchase
+        items.push({
+          name: purchase.productName,
+          sku: purchase.product?.sku || purchase.product?._id?.toString().slice(-6) || 'N/A',
+          quantity: purchase.quantity,
+          price: purchase.productPrice,
+          subtotal: purchase.productPrice * purchase.quantity
+        });
+      }
+
+      return {
+        orderId: purchase._id.toString().slice(-8).toUpperCase(),
+        orderDate: purchase.createdAt,
+        status: purchase.status === 'delivered' ? 'Delivered' : purchase.status,
+
+        sender: {
+          name: `${purchase.createdBy.firstName} ${purchase.createdBy.lastName}`,
+          email: purchase.createdBy.email,
+          phone: purchase.createdBy.phone || 'N/A',
+          address: purchase.createdBy.address || 'Address not provided'
+        },
+
+        receiver: {
+          name: `Collaborative Gift (${purchase.participants.length} participants)`,
+          phone: purchase.createdBy.phone || 'N/A',
+          address: 'Multiple Recipients - Collaborative Purchase'
+        },
+
+        orderDetails: {
+          items: items,
+          total: purchase.totalAmount,
+          participants: purchase.participants.length,
+          shareAmount: purchase.shareAmount
+        },
+
+        delivery: {
+          deliveryStaff: 'N/A', // Can be populated if you have delivery staff info
+          deliveryStaffPhone: 'N/A',
+          packedAt: purchase.packedAt,
+          deliveredAt: purchase.deliveredAt
+        }
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Print data for all delivered collaborative purchases retrieved successfully',
+      data: {
+        orders: printData,
+        totalOrders: printData.length,
+        printedAt: new Date(),
+        printedBy: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'System',
+        dateRange: {
+          from: fromDate || 'N/A',
+          to: toDate || 'N/A'
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in printAllDeliveredCollaborativePurchases:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve print data for delivered collaborative purchases',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createCollaborativePurchase,
   getCollaborativePurchase,
@@ -1059,4 +1172,5 @@ module.exports = {
   getAllCollaborativePurchases,
   startPacking,
   updateCollaborativeStatus,
+  printAllDeliveredCollaborativePurchases,
 };

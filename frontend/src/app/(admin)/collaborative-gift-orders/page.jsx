@@ -172,7 +172,7 @@ export default function CollaborativeGiftManagement() {
       })()) ||
       (activeTab === "packing" && gift.status?.toLowerCase() === 'packing') ||
       (activeTab === "deliveryConfirmed" && gift.status?.toLowerCase() === 'outfordelivery') ||
-      (activeTab === "all" && (gift.status?.toLowerCase() === 'delivered' || gift.status?.toLowerCase() === 'cancelled'))
+      (activeTab === "all" && (gift.status?.toLowerCase() === 'delivered' || gift.status?.toLowerCase() === 'cancelled' || gift.status?.toLowerCase() === 'refunded'))
 
     // Apply date filtering only for "All Orders" tab
     let matchesDateFilter = true
@@ -518,7 +518,7 @@ export default function CollaborativeGiftManagement() {
       if (fromDate) queryParams.append('fromDate', fromDate)
       if (toDate) queryParams.append('toDate', toDate)
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/surprise/print-all-delivered?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/print-all-delivered?${queryParams}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -1095,7 +1095,7 @@ export default function CollaborativeGiftManagement() {
                               )}
 
                               {/* All Orders Tab - Show completion status */}
-                              {gift.status === 'Delivered' && activeTab === 'all' && (
+                              {gift.status === 'Delivered'  && activeTab === 'all' && (
                                 <Badge className="bg-green-100 text-green-800">
                                   ✅ Completed
                                 </Badge>
