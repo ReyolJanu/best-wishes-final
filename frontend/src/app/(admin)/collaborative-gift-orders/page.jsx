@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
 
 
-import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2, X, AlertCircle, Printer } from "lucide-react"
+import { Calendar, Package, User, Phone, MapPin, Gift, Eye, CheckCircle, Clock, Truck, XCircle, Loader2, X, AlertCircle, Printer, ShoppingBag } from "lucide-react"
 
 export default function CollaborativeGiftManagement() {
   // Toast Notification Component
@@ -81,9 +81,10 @@ export default function CollaborativeGiftManagement() {
   const [selectedGift, setSelectedGift] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const [activeTab, setActiveTab] = useState("processing")
+  const [activeTab, setActiveTab] = useState("pending")
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
+  const [productDetails, setProductDetails] = useState({}) // Store fetched product details
   
   // Toast notification state
   const [toast, setToast] = useState({
@@ -149,10 +150,29 @@ export default function CollaborativeGiftManagement() {
       gift.user?.phone?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesTab =
-      (activeTab === "processing" && gift.status === "Pending") ||
-      (activeTab === "packing" && gift.status === "Packing") ||
-      (activeTab === "deliveryConfirmed" && gift.status === "OutForDelivery") ||
-      (activeTab === "all" && (gift.status === "Delivered" || gift.status === "Cancelled"))
+      (activeTab === "pending" && (() => {
+        const hasPending = gift.participants?.some(p => p.paymentStatus === 'pending');
+        const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined;
+        const result = !isCancelled && hasPending;
+        // Debug logging for pending tab
+        if (activeTab === "pending") {
+          console.log(`Pending tab - Gift ${gift._id}:`, {
+            hasPending,
+            isCancelled,
+            participants: gift.participants?.map(p => ({ email: p.email, paymentStatus: p.paymentStatus })),
+            result
+          });
+        }
+        return result;
+      })()) ||
+      (activeTab === "processing" && (() => {
+        const allPaid = gift.participants?.every(p => p.paymentStatus === 'paid') && gift.participants?.length > 0;
+        const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined;
+        return !isCancelled && gift.status?.toLowerCase() === 'pending' && allPaid;
+      })()) ||
+      (activeTab === "packing" && gift.status?.toLowerCase() === 'packing') ||
+      (activeTab === "deliveryConfirmed" && gift.status?.toLowerCase() === 'outfordelivery') ||
+      (activeTab === "all" && (gift.status?.toLowerCase() === 'delivered' || gift.status?.toLowerCase() === 'cancelled'))
 
     // Apply date filtering only for "All Orders" tab
     let matchesDateFilter = true
@@ -294,15 +314,70 @@ export default function CollaborativeGiftManagement() {
 
   const stats = {
     total: collaborativeGifts.length,
-    processing: collaborativeGifts.filter(g => g.status === 'Pending').length,
-    packing: collaborativeGifts.filter(g => g.status === 'Packing').length,
-    delivered: collaborativeGifts.filter(g => g.status === 'OutForDelivery').length,
+    pending: collaborativeGifts.filter(g => {
+      const hasPending = g.participants?.some(p => p.paymentStatus === 'pending');
+      const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
+      return !isCancelled && hasPending;
+    }).length,
+    processing: collaborativeGifts.filter(g => {
+      const allPaid = g.participants?.every(p => p.paymentStatus === 'paid') && g.participants?.length > 0;
+      const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
+      return !isCancelled && g.status?.toLowerCase() === 'pending' && allPaid;
+    }).length,
+    packing: collaborativeGifts.filter(g => g.status?.toLowerCase() === 'packing').length,
+    delivered: collaborativeGifts.filter(g => g.status?.toLowerCase() === 'outfordelivery').length,
     totalValue: collaborativeGifts.reduce((sum, gift) => sum + gift.total, 0),
   }
 
   const refreshGifts = async () => {
     setLoading(true);
     await fetchCollaborativeGifts();
+  };
+
+  // Fetch product details by productId
+  const fetchProductDetails = async (productId) => {
+    if (!productId || productDetails[productId]) return; // Already fetched or invalid ID
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/${productId}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setProductDetails(prev => ({
+            ...prev,
+            [productId]: data.data
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+    }
+  };
+
+  // Get product display data (combines order item with fetched product details)
+  const getProductDisplayData = (item) => {
+    const productId = item.product || item.productId || item._id;
+    const productDetail = productDetails[productId];
+
+    return {
+      id: productId,
+      name: productDetail?.name || item.name || 'Unknown Product',
+      image: productDetail?.images?.[0]?.url || item.image || '/placeholder.svg',
+      price: productDetail?.price || productDetail?.retailPrice || item.price || 0,
+      stock: productDetail?.stock || 0,
+      stockStatus: productDetail?.stockStatus || 'unknown',
+      sku: productDetail?.sku || `SKU-${productId?.slice(-6) || 'UNKNOWN'}`,
+      category: productDetail?.mainCategory || 'General',
+      weight: productDetail?.weight || 1.0,
+      quantity: item.quantity || 1
+    };
   };
 
   // Print surprise gift details
@@ -609,7 +684,7 @@ export default function CollaborativeGiftManagement() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -622,6 +697,18 @@ export default function CollaborativeGiftManagement() {
           </CardContent>
         </Card>
         
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-8 w-8 text-yellow-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending</p>
+                <p className="text-2xl font-bold">{stats.pending}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -710,15 +797,26 @@ export default function CollaborativeGiftManagement() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid grid-cols-4 gap-x-2 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
+            <TabsList className="grid grid-cols-5 gap-x-2 w-full px-2 py-1 bg-gray-50 rounded-md border-2 border-gray-400">
+              <TabsTrigger value="pending" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">
+                Pending ({collaborativeGifts.filter(g => {
+                  const hasPending = g.participants?.some(p => p.paymentStatus === 'pending');
+                  const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
+                  return !isCancelled && hasPending;
+                }).length})
+              </TabsTrigger>
               <TabsTrigger value="processing" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                Processing ({collaborativeGifts.filter(g => g.status === 'Pending').length})
+                Processing ({collaborativeGifts.filter(g => {
+                  const allPaid = g.participants?.every(p => p.paymentStatus === 'paid') && g.participants?.length > 0;
+                  const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
+                  return !isCancelled && g.status?.toLowerCase() === 'pending' && allPaid;
+                }).length})
               </TabsTrigger>
               <TabsTrigger value="packing" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
-                Packing ({collaborativeGifts.filter(g => g.status === 'Packing').length})
+                Packing ({collaborativeGifts.filter(g => g.status?.toLowerCase() === 'packing').length})
               </TabsTrigger>
               <TabsTrigger value="deliveryConfirmed" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
-                Delivery Confirmed ({collaborativeGifts.filter(g => g.status === 'OutForDelivery').length})
+                Delivery Confirmed ({collaborativeGifts.filter(g => g.status?.toLowerCase() === 'outfordelivery').length})
               </TabsTrigger>
               <TabsTrigger value="all" className="data-[state=active]:bg-gray-600 data-[state=active]:text-white">
                 All Orders ({collaborativeGifts.length})
@@ -785,8 +883,18 @@ export default function CollaborativeGiftManagement() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {
+                                onClick={async () => {
                                   setSelectedGift(gift)
+                                  
+                                  // Fetch product details for all items in this gift
+                                  if (gift.items && Array.isArray(gift.items)) {
+                                    const fetchPromises = gift.items.map(item => {
+                                      const productId = item.product || item.productId || item._id;
+                                      return fetchProductDetails(productId);
+                                    });
+                                    await Promise.all(fetchPromises);
+                                  }
+                                  
                                   setShowDetails(true)
                                 }}
                               >
@@ -802,8 +910,63 @@ export default function CollaborativeGiftManagement() {
                                 <Printer className="w-4 h-4" />
                               </Button>
                               
+                              {/* Pending Tab Actions */}
+                              {activeTab === 'pending' && (() => {
+                                const hasPending = gift.participants?.some(p => p.paymentStatus === 'pending' || p.paymentStatus === 'declined');
+                                const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined;
+                                return !isCancelled && hasPending;
+                              })() && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={async () => {
+                                      const giftId = gift._id
+                                      
+                                      try {
+                                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/surprise/${giftId}/cancel`, {
+                                          method: 'PUT',
+                                          credentials: 'include',
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                          }
+                                        })
+                                        
+                                        if (response.ok) {
+                                          const data = await response.json()
+                                          if (data.success) {
+                                            // Remove the cancelled gift from the list
+                                            setCollaborativeGifts(prev => 
+                                              prev.filter(g => g._id !== giftId)
+                                            )
+                                            
+                                            showToast('Surprise gift order cancelled successfully', 'success')
+                                          } else {
+                                            showToast(data.message || 'Failed to cancel order', 'error')
+                                          }
+                                        } else {
+                                          showToast('Failed to cancel order', 'error')
+                                        }
+                                      } catch (error) {
+                                        console.error('Error cancelling order:', error)
+                                        showToast('Error cancelling order', 'error')
+                                      }
+                                    }}
+                                    className="border-red-600 text-red-600 hover:bg-red-50"
+                                    variant="outline"
+                                  >
+                                    Cancel Order
+                                  </Button>
+                                </>
+                              )}
+
                               {/* Processing Tab Actions */}
-                              {gift.status === 'Pending' && activeTab === 'processing' && (
+                              {activeTab === 'processing' && (() => {
+                                const paidParticipants = gift.participants?.filter(p => p.paymentStatus === 'paid').length || 0
+                                const totalParticipants = gift.participants?.length || 0
+                                const allPaid = paidParticipants === totalParticipants && totalParticipants > 0
+                                const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined
+                                return !isCancelled && allPaid && gift.status?.toLowerCase() === 'pending'
+                              })() && (
                                 <>
                                   <Button
                                     size="sm"
@@ -1028,29 +1191,84 @@ export default function CollaborativeGiftManagement() {
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <h4 className="font-semibold">Items:</h4>
-                    {selectedGift.items.map((item, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                        <div className="flex items-center gap-3">
-                          {item.image && (
-                            <img 
-                              src={item.image} 
-                              alt={item.name}
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                          )}
-                          <div>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">${item.price.toFixed(2)}</p>
-                          <p className="text-sm text-gray-600">${(item.price * item.quantity).toFixed(2)} total</p>
-                        </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <ShoppingBag className="h-5 w-5 text-blue-600" />
+                      <h4 className="font-semibold text-blue-600">Product Details ({selectedGift.items.length} products)</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {selectedGift.items.map((item, index) => {
+                        const productData = getProductDisplayData(item);
+                        return (
+                          <Card key={`${productData.id}-${index}`} className="border border-gray-200 hover:shadow-xl transition-all duration-300 hover:border-blue-400 bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 min-h-[280px] hover:scale-[1.02]">
+                            <CardContent className="p-8">
+                              <div className="flex items-start gap-8">
+                                <div className="flex-shrink-0">
+                                  <div className="w-28 h-28 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200 overflow-hidden flex items-center justify-center shadow-sm">
+                                    <img
+                                      src={productData.image}
+                                      alt={productData.name}
+                                      className="w-full h-full object-cover transition-transform hover:scale-105"
+                                      onError={(e) => {
+                                        e.target.src = "/placeholder.svg";
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex-1 space-y-4">
+                                  <div>
+                                    <h5 className="font-semibold text-sm text-gray-900 leading-tight mb-1">{productData.name}</h5>
+                                    <p className="text-xs text-gray-500">SKU: {productData.sku}</p>
+                                    <p className="text-xs text-gray-500">Category: {productData.category}</p>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                                      <span className="text-xs text-gray-600 font-medium">Quantity:</span>
+                                      <span className="text-sm font-semibold text-gray-900">{productData.quantity}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                                      <span className="text-xs text-gray-600 font-medium">Unit Price:</span>
+                                      <span className="text-sm font-semibold text-gray-900">${productData.price.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                                      <span className="text-xs text-gray-600 font-medium">Stock:</span>
+                                      <span className="text-sm font-semibold text-gray-900">{productData.stock}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2">
+                                      <span className="text-xs text-gray-600 font-medium">Total:</span>
+                                      <span className="text-sm font-bold text-green-600">${(productData.price * productData.quantity).toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                  <div className="pt-4">
+                                    <Badge 
+                                      variant={productData.stockStatus === "in-stock" ? "default" : 
+                                             productData.stockStatus === "low-stock" ? "secondary" : "destructive"} 
+                                      className="text-xs px-3 py-1 font-semibold"
+                                    >
+                                      {productData.stockStatus === "in-stock" ? "IN STOCK" :
+                                       productData.stockStatus === "low-stock" ? "LOW STOCK" :
+                                       productData.stockStatus === "out-of-stock" ? "OUT OF STOCK" :
+                                       "UNKNOWN"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-6">
+                      <div className="text-sm text-gray-600">
+                        Total Weight: {selectedGift.items.reduce((sum, item) => {
+                          const productData = getProductDisplayData(item);
+                          return sum + (productData.weight * productData.quantity);
+                        }, 0).toFixed(1)} lbs
                       </div>
-                    ))}
+                      <div className="text-lg font-bold text-green-600">
+                        Order Total: ${selectedGift.total.toFixed(2)}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

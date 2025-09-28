@@ -321,7 +321,7 @@ const processPayment = async (req, res) => {
     if (allPaid) {
       // Create the actual order
       const order = await createOrderFromCollaborativePurchase(collaborativePurchase);
-      collaborativePurchase.status = 'completed';
+      collaborativePurchase.status = 'pending'; // Ready for packing
       collaborativePurchase.completedAt = new Date();
       collaborativePurchase.orderId = order._id;
       
@@ -749,7 +749,7 @@ const processRefunds = async (collaborativePurchase) => {
 const getAllCollaborativePurchases = async (req, res) => {
   try {
     const collaborativePurchases = await CollaborativePurchase.find({
-      status: { $in: ['pending', 'packing', 'outfordelivery', 'delivered'] }
+      status: { $in: ['Processing', 'pending', 'packing', 'outfordelivery', 'delivered'] }
     })
     .populate('createdBy', 'firstName lastName email phone')
     .populate('products.product', 'name sku costPrice retailPrice salePrice stock')
@@ -767,7 +767,7 @@ const getAllCollaborativePurchases = async (req, res) => {
           name: prod.productName,
           price: prod.productPrice,
           quantity: prod.quantity,
-          image: prod.image,
+          image: prod.product?.images?.[0]?.url || prod.image || '',
           stock: prod.product?.stock || 0,
           costPrice: prod.product?.costPrice || 0,
           retailPrice: prod.product?.retailPrice || 0,
@@ -797,7 +797,8 @@ const getAllCollaborativePurchases = async (req, res) => {
         recipientPhone: purchase.createdBy?.phone || 'N/A',
         shippingAddress: 'Collaborative Purchase - Multiple Recipients',
         total: purchase.totalAmount,
-        status: purchase.status === 'pending' ? 'Pending' : 
+        status: purchase.status === 'Processing' ? 'Processing' :
+                purchase.status === 'pending' ? 'Pending' : 
                 purchase.status === 'packing' ? 'Packing' :
                 purchase.status === 'outfordelivery' ? 'OutForDelivery' : 
                 purchase.status === 'delivered' ? 'Delivered' :
@@ -854,12 +855,12 @@ const startPacking = async (req, res) => {
       });
     }
 
-    // Check if status is pending
+    // Check if status is pending (ready for packing)
     if (collaborativePurchase.status !== 'pending') {
       await session.abortTransaction();
       return res.status(400).json({
         success: false,
-        message: `Cannot start packing. Current status: ${collaborativePurchase.status}`
+        message: `Cannot start packing. Current status: ${collaborativePurchase.status}. Order must be in 'pending' status with all participants paid.`
       });
     }
 
@@ -936,7 +937,7 @@ const startPacking = async (req, res) => {
         profit: profit,
         totalProfit: totalProfit,
         orderDate: new Date(),
-        status: 'collaborative'
+        status: 'orders'
       });
 
       await orderSummary.save({ session });
