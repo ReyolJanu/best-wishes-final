@@ -555,7 +555,7 @@ export default function CollaborativePurchasesDashboard() {
 
                         {purchase.status === 'completed' && purchase.orderId && (
                           <button
-                            onClick={() => window.open(`/user/history`, '_blank')}
+                            onClick={() => window.open(`/user/history`, '_self')}
                             className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
                           >
                             View Order

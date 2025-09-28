@@ -204,7 +204,7 @@ export default function PaymentPage() {
 		
 		return {
 			amount: isNaN(finalAmount) ? 0 : finalAmount,
-			currency: "usd",
+			currency: "gbp",
 			shipping: shippingCost,
 		};
 	}, [product, qty, customization]);
