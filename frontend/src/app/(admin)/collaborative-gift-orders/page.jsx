@@ -385,10 +385,10 @@ export default function CollaborativeGiftManagement() {
     };
   };
 
-  // Print surprise gift details
+  // Print collaborative purchase details
   const printGiftDetails = async (giftId) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/surprise/${giftId}/print`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/${giftId}/print`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -406,7 +406,7 @@ export default function CollaborativeGiftManagement() {
           <!DOCTYPE html>
           <html>
             <head>
-              <title>Surprise Gift Order - ${data.data.orderId}</title>
+              <title>Collaborative Gift Order - ${data.data.orderId}</title>
               <style>
                 body { font-family: Arial, sans-serif; margin: 20px; }
                 .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
@@ -416,9 +416,14 @@ export default function CollaborativeGiftManagement() {
                 .info-box { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
                 .item-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
                 .total-row { font-weight: bold; border-top: 2px solid #333; padding-top: 10px; }
+                .participant-row { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #f0f0f0; }
                 .status { padding: 5px 10px; border-radius: 15px; display: inline-block; color: white; }
                 .status-paid { background-color: #28a745; }
-                .status-outfordelivery { background-color: #fd7e14; }
+                .status-pending { background-color: #ffc107; color: black; }
+                .status-declined { background-color: #dc3545; }
+                .status-processing { background-color: #17a2b8; }
+                .status-packing { background-color: #fd7e14; }
+                .status-outfordelivery { background-color: #6f42c1; }
                 .status-delivered { background-color: #28a745; }
                 @media print {
                   body { margin: 0; }
@@ -428,7 +433,7 @@ export default function CollaborativeGiftManagement() {
             </head>
             <body>
               <div class="header">
-                <h1>SURPRISE GIFT ORDER</h1>
+                <h1>COLLABORATIVE GIFT ORDER</h1>
                 <p><strong>Order ID:</strong> ${data.data.orderId}</p>
                 <p><strong>Order Date:</strong> ${new Date(data.data.orderDate).toLocaleDateString()}</p>
                 <p><strong>Status:</strong> <span class="status status-${data.data.status.toLowerCase()}">${data.data.status}</span></p>
@@ -436,7 +441,7 @@ export default function CollaborativeGiftManagement() {
 
               <div class="info-grid">
                 <div class="info-box">
-                  <h3>👤 SENDER DETAILS</h3>
+                  <h3>👤 CREATOR DETAILS</h3>
                   <p><strong>Name:</strong> ${data.data.sender.name}</p>
                   <p><strong>Email:</strong> ${data.data.sender.email}</p>
                   <p><strong>Phone:</strong> ${data.data.sender.phone}</p>
@@ -444,10 +449,10 @@ export default function CollaborativeGiftManagement() {
                 </div>
 
                 <div class="info-box">
-                  <h3>🎁 RECEIVER DETAILS</h3>
-                  <p><strong>Name:</strong> ${data.data.receiver.name}</p>
-                  <p><strong>Phone:</strong> ${data.data.receiver.phone}</p>
-                  <p><strong>Address:</strong> ${data.data.receiver.address}</p>
+                  <h3>🎁 COLLABORATIVE DETAILS</h3>
+                  <p><strong>Recipients:</strong> ${data.data.receiver.name}</p>
+                  <p><strong>Share Amount:</strong> $${data.data.orderDetails.shareAmount ? data.data.orderDetails.shareAmount.toFixed(2) : '0.00'}</p>
+                  <p><strong>Total Participants:</strong> ${data.data.orderDetails.participants}</p>
                 </div>
               </div>
 
@@ -460,14 +465,29 @@ export default function CollaborativeGiftManagement() {
                       <small>SKU: ${item.sku} | Qty: ${item.quantity}</small>
                     </div>
                     <div>
-                      $${item.price.toFixed(2)} × ${item.quantity} = $${item.subtotal.toFixed(2)}
+                      $${item.price ? item.price.toFixed(2) : '0.00'} × ${item.quantity} = $${item.subtotal ? item.subtotal.toFixed(2) : '0.00'}
                     </div>
                   </div>
                 `).join('')}
                 <div class="item-row total-row">
                   <div><strong>TOTAL AMOUNT</strong></div>
-                  <div><strong>$${data.data.orderDetails.total.toFixed(2)}</strong></div>
+                  <div><strong>$${data.data.orderDetails.total ? data.data.orderDetails.total.toFixed(2) : '0.00'}</strong></div>
                 </div>
+              </div>
+
+              <div class="section">
+                <h3>👥 PARTICIPANTS PAYMENT STATUS</h3>
+                ${data.data.participants.map(participant => `
+                  <div class="participant-row">
+                    <div>
+                      <strong>${participant.email}</strong>
+                    </div>
+                    <div>
+                      <span class="status status-${participant.paymentStatus.toLowerCase()}">${participant.paymentStatus}</span>
+                      <span>$${participant.amount ? participant.amount.toFixed(2) : '0.00'}</span>
+                    </div>
+                  </div>
+                `).join('')}
               </div>
 
               <div class="info-grid">

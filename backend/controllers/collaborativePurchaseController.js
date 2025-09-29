@@ -1218,6 +1218,116 @@ const printAllDeliveredCollaborativePurchases = async (req, res) => {
   }
 };
 
+// Print collaborative purchase details (individual)
+const printCollaborativePurchaseDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const collaborativePurchase = await CollaborativePurchase.findById(id)
+      .populate('createdBy', 'firstName lastName email phone address')
+      .populate('products.product', 'name sku images')
+      .populate('product', 'name sku images');
+
+    if (!collaborativePurchase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collaborative purchase not found'
+      });
+    }
+
+    // Format items for printing
+    const items = [];
+
+    if (collaborativePurchase.isMultiProduct && collaborativePurchase.products && collaborativePurchase.products.length > 0) {
+      // Multi-product purchase
+      items.push(...collaborativePurchase.products.map(prod => ({
+        name: prod.productName,
+        sku: prod.product?.sku || prod.product?._id?.toString().slice(-6) || 'N/A',
+        quantity: prod.quantity,
+        price: prod.productPrice,
+        subtotal: prod.productPrice * prod.quantity,
+        image: prod.product?.images?.[0]?.url || '/placeholder.svg'
+      })));
+    } else if (collaborativePurchase.product) {
+      // Single product purchase
+      items.push({
+        name: collaborativePurchase.productName,
+        sku: collaborativePurchase.product?.sku || collaborativePurchase.product?._id?.toString().slice(-6) || 'N/A',
+        quantity: collaborativePurchase.quantity,
+        price: collaborativePurchase.productPrice,
+        subtotal: collaborativePurchase.productPrice * collaborativePurchase.quantity,
+        image: collaborativePurchase.product?.images?.[0]?.url || '/placeholder.svg'
+      });
+    }
+
+    // Format data for printing
+    const printData = {
+      orderId: collaborativePurchase._id.toString().slice(-8).toUpperCase(),
+      orderDate: collaborativePurchase.createdAt,
+      status: collaborativePurchase.status,
+
+      // Sender Details (Creator)
+      sender: {
+        name: `${collaborativePurchase.createdBy.firstName} ${collaborativePurchase.createdBy.lastName}`,
+        email: collaborativePurchase.createdBy.email,
+        phone: collaborativePurchase.createdBy.phone || 'N/A',
+        address: collaborativePurchase.createdBy.address || 'Address not provided'
+      },
+
+      // Receiver Details (Collaborative)
+      receiver: {
+        name: `Collaborative Gift (${collaborativePurchase.participants.length} participants)`,
+        phone: collaborativePurchase.createdBy.phone || 'N/A',
+        address: 'Multiple Recipients - Collaborative Purchase'
+      },
+
+      // Order Details
+      orderDetails: {
+        costume: collaborativePurchase.costume || 'None',
+        suggestions: collaborativePurchase.suggestions || 'None',
+        scheduledAt: collaborativePurchase.scheduledAt,
+        total: collaborativePurchase.totalAmount,
+        shareAmount: collaborativePurchase.shareAmount,
+        participants: collaborativePurchase.participants.length,
+        items: items
+      },
+
+      // Participants payment status
+      participants: collaborativePurchase.participants.map(p => ({
+        email: p.email,
+        paymentStatus: p.paymentStatus,
+        amount: collaborativePurchase.shareAmount
+      })),
+
+      // Delivery Details
+      delivery: {
+        deliveryStaff: 'Not assigned', // Can be populated if you have delivery staff info
+        deliveryStaffPhone: 'N/A',
+        deliveredAt: collaborativePurchase.deliveredAt,
+        packedAt: collaborativePurchase.packedAt
+      },
+
+      // Print metadata
+      printedAt: new Date(),
+      printedBy: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'System'
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Print data retrieved successfully',
+      data: printData
+    });
+
+  } catch (error) {
+    console.error('Error in printCollaborativePurchaseDetails:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve print data',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createCollaborativePurchase,
   getCollaborativePurchase,
@@ -1230,4 +1340,5 @@ module.exports = {
   startPacking,
   updateCollaborativeStatus,
   printAllDeliveredCollaborativePurchases,
+  printCollaborativePurchaseDetails,
 };
