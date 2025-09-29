@@ -18,6 +18,11 @@ router.post('/:id/start-packing', isAuthenticated, authorizeRoles('admin'), coll
 // Admin routes - Update status
 router.put('/:id/status', isAuthenticated, authorizeRoles('admin'), collaborativePurchaseController.updateCollaborativeStatus);
 
+// Delivery staff routes
+router.get('/delivery', isAuthenticated, authorizeRoles('deliveryStaff'), collaborativePurchaseController.getDeliveryCollaborativePurchases);
+router.get('/delivery-stats', isAuthenticated, authorizeRoles('deliveryStaff'), collaborativePurchaseController.getDeliveryStats);
+router.put('/delivery/:id/status', isAuthenticated, authorizeRoles('deliveryStaff'), collaborativePurchaseController.updateDeliveryStatus);
+
 // Create collaborative purchase
 router.post('/', isAuthenticated, collaborativePurchaseController.createCollaborativePurchase);
 

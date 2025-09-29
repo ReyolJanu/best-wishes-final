@@ -1321,6 +1321,198 @@ const printCollaborativePurchaseDetails = async (req, res) => {
   }
 };
 
+// Get collaborative purchases for delivery staff
+const getDeliveryCollaborativePurchases = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, query } = req.query;
+
+    console.log('getDeliveryCollaborativePurchases called with:', { page, limit, status, query });
+
+    // Build match criteria for delivery-ready collaborative purchases
+    let matchCriteria = {}; // Temporarily remove status filter to debug
+
+    // If a specific status is requested and it matches our delivery status
+    if (status && status === 'outfordelivery') {
+      matchCriteria.status = status;
+    } else {
+      // Default to outfordelivery if no status specified
+      matchCriteria.status = 'outfordelivery';
+    }
+
+    console.log('Match criteria:', matchCriteria);
+
+    // Add search functionality
+    if (query) {
+      matchCriteria.$or = [
+        { 'createdBy.firstName': { $regex: query, $options: 'i' } },
+        { 'createdBy.lastName': { $regex: query, $options: 'i' } },
+        { 'createdBy.email': { $regex: query, $options: 'i' } }
+      ];
+    }
+
+    const collaborativePurchases = await CollaborativePurchase.find(matchCriteria)
+      .populate('createdBy', 'firstName lastName email phone address')
+      .populate('products.product', 'name images salePrice retailPrice')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+
+    console.log('Found collaborative purchases:', collaborativePurchases.length);
+
+    const total = await CollaborativePurchase.countDocuments(matchCriteria);
+
+    console.log('Total count:', total);
+
+    res.status(200).json({
+      success: true,
+      collaborativeGifts: collaborativePurchases,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching delivery collaborative purchases:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get delivery stats for collaborative purchases
+const getDeliveryStats = async (req, res) => {
+  try {
+    console.log('getDeliveryStats called for collaborative purchases');
+
+    const stats = {
+      total: 0,
+      pending: 0,
+      outForDelivery: 0,
+      delivered: 0
+    };
+
+    // Count collaborative purchases by status
+    const statusCounts = await CollaborativePurchase.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    console.log('Status counts:', statusCounts);
+
+    // Process the counts
+    statusCounts.forEach(statusCount => {
+      switch (statusCount._id) {
+        case 'outfordelivery':
+          stats.outForDelivery = statusCount.count;
+          stats.total += statusCount.count;
+          break;
+        case 'delivered':
+          stats.delivered = statusCount.count;
+          stats.total += statusCount.count;
+          break;
+        case 'pending':
+        case 'processing':
+          stats.pending += statusCount.count;
+          stats.total += statusCount.count;
+          break;
+        default:
+          stats.total += statusCount.count;
+      }
+    });
+
+    console.log('Final stats:', stats);
+
+    res.status(200).json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error fetching delivery stats for collaborative purchases:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Update delivery status for collaborative purchases
+const updateDeliveryStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes, deliveryStaffId } = req.body;
+
+    console.log('updateDeliveryStatus called:', { id, status, notes, deliveryStaffId });
+
+    // Validate status - delivery staff can only update to 'delivered'
+    if (status !== 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery staff can only mark orders as delivered'
+      });
+    }
+
+    const collaborativePurchase = await CollaborativePurchase.findById(id);
+
+    if (!collaborativePurchase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collaborative purchase not found'
+      });
+    }
+
+    // Check if the current status allows delivery update
+    if (!['outfordelivery', 'shipped'].includes(collaborativePurchase.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order status does not allow delivery update'
+      });
+    }
+
+    // Update the status and delivery staff ID
+    collaborativePurchase.status = status;
+    collaborativePurchase.deliveryStaffId = deliveryStaffId || req.user._id;
+    collaborativePurchase.deliveredAt = new Date();
+
+    // Add status history
+    if (!collaborativePurchase.statusHistory) {
+      collaborativePurchase.statusHistory = [];
+    }
+
+    collaborativePurchase.statusHistory.push({
+      status: status,
+      updatedAt: new Date(),
+      updatedBy: req.user._id,
+      notes: notes || 'Marked as delivered by delivery staff'
+    });
+
+    await collaborativePurchase.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Collaborative purchase status updated successfully',
+      collaborativePurchase
+    });
+
+  } catch (error) {
+    console.error('Error updating delivery status for collaborative purchase:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createCollaborativePurchase,
   getCollaborativePurchase,
@@ -1334,4 +1526,7 @@ module.exports = {
   updateCollaborativeStatus,
   printAllDeliveredCollaborativePurchases,
   printCollaborativePurchaseDetails,
+  getDeliveryCollaborativePurchases,
+  getDeliveryStats,
+  updateDeliveryStatus,
 };

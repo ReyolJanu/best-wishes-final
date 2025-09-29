@@ -143,24 +143,24 @@ export default function NavigationBar({ activeTab, onTabChange, userProfile, not
       shortLabel: "Delivery",
       icon: Package,
     },
-    {
-      id: "route",
-      label: "Delivery Route",
-      shortLabel: "Route",
-      icon: Route,
-    },
-    {
-      id: "analytics",
-      label: "Analytics",
-      shortLabel: "Analytics",
-      icon: BarChart3,
-    },
-    {
-      id: "complains",
-      label: "Complains",
-      shortLabel: "Complains",
-      icon: AlertCircle,
-    },
+    // {
+    //   id: "route",
+    //   label: "Delivery Route",
+    //   shortLabel: "Route",
+    //   icon: Route,
+    // },
+    // {
+    //   id: "analytics",
+    //   label: "Analytics",
+    //   shortLabel: "Analytics",
+    //   icon: BarChart3,
+    // },
+    // {
+    //   id: "complains",
+    //   label: "Complains",
+    //   shortLabel: "Complains",
+    //   icon: AlertCircle,
+    // },
     {
       id: "history",
       label: "Delivery History",

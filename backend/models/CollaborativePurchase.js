@@ -118,6 +118,10 @@ const CollaborativePurchaseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
   },
+  deliveryStaffId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
   notifications: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Notification',

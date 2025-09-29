@@ -20,13 +20,14 @@ export default function DeliveryDashboard() {
   // State management
   const [activeTab, setActiveTab] = useState("delivery")
   const [orders, setOrders] = useState([])
+  const [collaborativeGifts, setCollaborativeGifts] = useState([])
   const [surpriseGifts, setSurpriseGifts] = useState([])
   const [complaints, setComplaints] = useState([])
   const [deliveryHistory, setDeliveryHistory] = useState([])
   const [filterStatus, setFilterStatus] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
-  const [orderType, setOrderType] = useState("orders") // "orders" or "surpriseGifts"
+  const [orderType, setOrderType] = useState("orders") // "orders", "collaborativeGifts", or "surpriseGifts"
   const [userProfile, setUserProfile] = useState(null)
   const [notifications, setNotifications] = useState([])
   const [stats, setStats] = useState({
@@ -35,6 +36,7 @@ export default function DeliveryDashboard() {
     inTransitOrders: 0,
     deliveredOrders: 0,
     cancelledOrders: 0,
+    totalCollaborativeGifts: 0,
     totalSurpriseGifts: 0,
     pendingSurpriseGifts: 0
   })
@@ -201,15 +203,25 @@ export default function DeliveryDashboard() {
   const fetchOrders = async (page = 1, status = filterStatus, search = searchQuery) => {
     setLoading(true)
     try {
-      // Fetch regular orders with status "Shipping"
+      // Fetch regular orders with status "Shipped"
       const ordersParams = new URLSearchParams({
         page: page.toString(),
         limit: '10',
-        status: 'shipping',
+        status: 'Shipped',
         ...(search && { query: search })
       })
 
       const ordersResponse = await authenticatedFetch(`/delivery/orders?${ordersParams}`)
+      
+      // Fetch collaborative purchases with status "outfordelivery"
+      const collaborativeParams = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        status: 'outfordelivery',
+        ...(search && { query: search })
+      })
+
+      const collaborativeResponse = await authenticatedFetch(`/collaborative-purchases/delivery?${collaborativeParams}`)
       
       // Fetch surprise gifts with status "OutForDelivery"
       const surpriseGiftsParams = new URLSearchParams({
@@ -222,29 +234,41 @@ export default function DeliveryDashboard() {
       const surpriseGiftsResponse = await authenticatedFetch(`/delivery/surprise-gifts?${surpriseGiftsParams}`)
 
       let ordersData = { orders: [], pagination: {} }
+      let collaborativeData = { collaborativeGifts: [], pagination: {} }
       let surpriseGiftsData = { surpriseGifts: [], pagination: {} }
 
       if (ordersResponse.ok) {
         ordersData = await ordersResponse.json()
       }
 
+      if (collaborativeResponse.ok) {
+        collaborativeData = await collaborativeResponse.json()
+      }
+
       if (surpriseGiftsResponse.ok) {
         surpriseGiftsData = await surpriseGiftsResponse.json()
       }
 
-      // Set data for both collections
+      // Set data for all collections
       const orders = Array.isArray(ordersData.orders) ? ordersData.orders : []
+      const collaborativeGifts = Array.isArray(collaborativeData.collaborativeGifts) ? collaborativeData.collaborativeGifts : []
       const surpriseGifts = Array.isArray(surpriseGiftsData.surpriseGifts) ? surpriseGiftsData.surpriseGifts : []
       
       setOrders(orders)
+      setCollaborativeGifts(collaborativeGifts)
       setSurpriseGifts(surpriseGifts)
       setCurrentPage(ordersData.pagination?.currentPage || 1)
-      setTotalPages(Math.max(ordersData.pagination?.totalPages || 1, surpriseGiftsData.pagination?.totalPages || 1))
+      setTotalPages(Math.max(
+        ordersData.pagination?.totalPages || 1, 
+        collaborativeData.pagination?.totalPages || 1,
+        surpriseGiftsData.pagination?.totalPages || 1
+      ))
 
     } catch (error) {
       console.error("Error fetching data:", error)
       // Set empty arrays on error
       setOrders([])
+      setCollaborativeGifts([])
       setSurpriseGifts([])
     } finally {
       setLoading(false)
@@ -253,9 +277,10 @@ export default function DeliveryDashboard() {
 
   const fetchStats = async () => {
     try {
-      // Fetch stats for both orders and surprise gifts
-      const [ordersStatsResponse, surpriseGiftsStatsResponse] = await Promise.all([
+      // Fetch stats for orders, collaborative purchases, and surprise gifts
+      const [ordersStatsResponse, collaborativeStatsResponse, surpriseGiftsStatsResponse] = await Promise.all([
         authenticatedFetch('/delivery/stats'),
+        authenticatedFetch('/collaborative-purchases/delivery-stats'),
         authenticatedFetch('/delivery/surprise-gifts/stats')
       ])
 
@@ -265,6 +290,7 @@ export default function DeliveryDashboard() {
         inTransitOrders: 0,
         deliveredOrders: 0,
         cancelledOrders: 0,
+        totalCollaborativeGifts: 0,
         totalSurpriseGifts: 0,
         pendingSurpriseGifts: 0
       }
@@ -273,6 +299,13 @@ export default function DeliveryDashboard() {
         const ordersData = await ordersStatsResponse.json()
         if (ordersData.success && ordersData.stats) {
           combinedStats = { ...combinedStats, ...ordersData.stats }
+        }
+      }
+
+      if (collaborativeStatsResponse.ok) {
+        const collaborativeData = await collaborativeStatsResponse.json()
+        if (collaborativeData.success && collaborativeData.stats) {
+          combinedStats.totalCollaborativeGifts = collaborativeData.stats.total || 0
         }
       }
 
@@ -303,6 +336,34 @@ export default function DeliveryDashboard() {
     }
   }
 
+  // Function to get current data set based on order type
+  const getCurrentDataSet = () => {
+    switch (orderType) {
+      case "orders":
+        return orders
+      case "collaborative":
+        return collaborativeGifts
+      case "surpriseGifts":
+        return surpriseGifts
+      default:
+        return orders
+    }
+  }
+
+  // Function to get current data type label
+  const getCurrentDataLabel = () => {
+    switch (orderType) {
+      case "orders":
+        return "regular orders"
+      case "collaborative":
+        return "collaborative gifts"
+      case "surpriseGifts":
+        return "surprise gifts"
+      default:
+        return "orders"
+    }
+  }
+
   const fetchDeliveryHistory = async (providedStaffId = null) => {
     setLoading(true)
     try {
@@ -315,13 +376,15 @@ export default function DeliveryDashboard() {
         return
       }
 
-      const [ordersResponse, surpriseGiftsResponse] = await Promise.all([
+      const [ordersResponse, surpriseGiftsResponse, collaborativeResponse] = await Promise.all([
         authenticatedFetch(`/delivery/orders?status=delivered&deliveryStaff=${staffId}`),
-        authenticatedFetch(`/delivery/surprise-gifts?status=delivered&deliveryStaff=${staffId}`)
+        authenticatedFetch(`/delivery/surprise-gifts?status=delivered&deliveryStaff=${staffId}`),
+        authenticatedFetch(`/collaborative-purchases/delivery?status=delivered`)
       ])
 
       let deliveredOrders = []
       let deliveredSurpriseGifts = []
+      let deliveredCollaborativeGifts = []
 
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json()
@@ -334,6 +397,15 @@ export default function DeliveryDashboard() {
         const surpriseGiftsData = await surpriseGiftsResponse.json()
         if (surpriseGiftsData.success) {
           deliveredSurpriseGifts = surpriseGiftsData.surpriseGifts || []
+        }
+      }
+
+      if (collaborativeResponse.ok) {
+        const collaborativeData = await collaborativeResponse.json()
+        if (collaborativeData.success) {
+          // Filter collaborative purchases delivered by this staff
+          deliveredCollaborativeGifts = (collaborativeData.collaborativeGifts || [])
+            .filter(gift => gift.deliveryStaffId === staffId)
         }
       }
 
@@ -351,6 +423,13 @@ export default function DeliveryDashboard() {
           type: 'surprise-gift',
           productName: gift.items?.[0]?.product?.name || gift.items?.[0]?.name || 'Surprise Gift',
           deliveryDate: gift.updatedAt || gift.deliveredAt,
+          status: 'Completed'
+        })),
+        ...deliveredCollaborativeGifts.map(gift => ({
+          ...gift,
+          type: 'collaborative-gift',
+          productName: gift.products?.[0]?.productName || gift.productName || 'Collaborative Gift',
+          deliveryDate: gift.deliveredAt || gift.updatedAt,
           status: 'Completed'
         }))
       ]
@@ -391,20 +470,21 @@ export default function DeliveryDashboard() {
 
       const data = await response.json()
       if (data.success) {
-        // Remove the updated item from the appropriate list
-        if (itemType === 'orders') {
-          setOrders(prev => prev.filter(order => order._id !== orderId && order.id !== orderId))
-        } else if (itemType === 'surpriseGifts') {
-          setSurpriseGifts(prev => prev.filter(gift => gift._id !== orderId && gift.id !== orderId))
-        }
-        
-        // Refresh data and stats
+      // Remove the updated item from the appropriate list
+      if (itemType === 'orders') {
+        setOrders(prev => prev.filter(order => order._id !== orderId && order.id !== orderId))
+      } else if (itemType === 'surpriseGifts') {
+        setSurpriseGifts(prev => prev.filter(gift => gift._id !== orderId && gift.id !== orderId))
+      } else if (itemType === 'collaborative') {
+        setCollaborativeGifts(prev => prev.filter(gift => gift._id !== orderId && gift.id !== orderId))
+      }        // Refresh data and stats
         await fetchOrders(currentPage, filterStatus, searchQuery)
         await fetchStats()
         
         // Show success notification
-        toast.success(`✅ ${itemType === 'orders' ? 'Order' : 'Surprise Gift'} marked as Delivered successfully!`, {
-          description: `${itemType === 'orders' ? 'Order' : 'Surprise Gift'} #${orderId} has been delivered and recorded under your name.`,
+        const itemTypeLabel = itemType === 'orders' ? 'Order' : itemType === 'surpriseGifts' ? 'Surprise Gift' : 'Collaborative Gift'
+        toast.success(`✅ ${itemTypeLabel} marked as Delivered successfully!`, {
+          description: `${itemTypeLabel} #${orderId} has been delivered and recorded under your name.`,
           duration: 5000,
         })
         
@@ -413,7 +493,8 @@ export default function DeliveryDashboard() {
       }
     } catch (error) {
       console.error(`Error updating ${itemType} status:`, error)
-      toast.error(`Failed to update ${itemType} status`, {
+      const itemTypeLabel = itemType === 'orders' ? 'order' : itemType === 'surpriseGifts' ? 'surprise gift' : 'collaborative gift'
+      toast.error(`Failed to update ${itemTypeLabel} status`, {
         description: 'Please try again or contact support if the issue persists.',
         duration: 5000,
       })
@@ -435,6 +516,10 @@ export default function DeliveryDashboard() {
       } else if (itemType === 'surpriseGifts') {
         endpoint = `/delivery/surprise-gifts/${orderId}/status`
         currentStatus = 'OutForDelivery'
+      } else if (itemType === 'collaborative') {
+        endpoint = `/collaborative-purchases/delivery/${orderId}/status`
+        currentStatus = 'outfordelivery'
+        newStatus = 'delivered'
       }
 
       await updateOrderStatus(orderId, newStatus, '', endpoint, itemType, currentStatus)
@@ -529,6 +614,18 @@ export default function DeliveryDashboard() {
 
     if (!order) return null
 
+    // Determine if this is a collaborative purchase
+    const isCollaborative = order.products && !order.items
+
+    // Get customer info based on order type
+    const customerInfo = isCollaborative ? order.createdBy : order.user
+
+    // Get items based on order type
+    const orderItems = isCollaborative ? order.products : order.items
+
+    // Get total amount based on order type
+    const totalAmount = isCollaborative ? order.totalAmount : order.total
+
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-3 sm:mx-auto">
@@ -552,15 +649,29 @@ export default function DeliveryDashboard() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Processing">Processing</SelectItem>
-                    <SelectItem value="Shipped">Shipped</SelectItem>
-                    <SelectItem value="Delivered">Delivered</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    {isCollaborative ? (
+                      // For collaborative purchases, only allow marking as delivered
+                      <SelectItem value="delivered">Delivered</SelectItem>
+                    ) : (
+                      // For regular orders and surprise gifts, show all status options
+                      <>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="Processing">Processing</SelectItem>
+                        <SelectItem value="Shipped">Shipped</SelectItem>
+                        <SelectItem value="Delivered">Delivered</SelectItem>
+                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
                 <Button 
-                  onClick={() => updateOrderStatus(order._id || order.id, selectedStatus, statusNotes)}
+                  onClick={() => updateOrderStatus(
+                    order._id || order.id, 
+                    selectedStatus, 
+                    statusNotes,
+                    isCollaborative ? `/collaborative-purchases/delivery/${order._id || order.id}/status` : null,
+                    isCollaborative ? 'collaborative' : 'orders'
+                  )}
                   disabled={updatingOrderId === (order._id || order.id) || selectedStatus === order.status}
                   size="sm"
                   className="w-full sm:w-auto"
@@ -582,19 +693,19 @@ export default function DeliveryDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="text-xs sm:text-sm font-medium text-gray-700">Name</label>
-                    <p className="text-sm sm:text-base text-gray-900">{order.user?.firstName} {order.user?.lastName}</p>
+                    <p className="text-sm sm:text-base text-gray-900">{customerInfo?.firstName} {customerInfo?.lastName}</p>
                   </div>
                   <div>
                     <label className="text-xs sm:text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-sm sm:text-base text-gray-900 break-all">{order.user?.email}</p>
+                    <p className="text-sm sm:text-base text-gray-900 break-all">{customerInfo?.email}</p>
                   </div>
                   <div>
                     <label className="text-xs sm:text-sm font-medium text-gray-700">Phone</label>
-                    <p className="text-sm sm:text-base text-gray-900">{order.user?.phone}</p>
+                    <p className="text-sm sm:text-base text-gray-900">{customerInfo?.phone}</p>
                   </div>
                   <div>
                     <label className="text-xs sm:text-sm font-medium text-gray-700">Address</label>
-                    <p className="text-sm sm:text-base text-gray-900">{order.user?.address}</p>
+                    <p className="text-sm sm:text-base text-gray-900">{order.shippingAddress || customerInfo?.address || 'Address not provided'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -610,23 +721,34 @@ export default function DeliveryDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 sm:space-y-4">
-                  {order.items?.map((item, index) => {
-                    const productImage = item.image || item.product?.images?.[0] || "/images/placeholder.png";
+                  {orderItems?.map((item, index) => {
+                    // Handle different item structures for collaborative vs regular orders
+                    const productImage = isCollaborative 
+                      ? (item.image || item.product?.images?.[0] || "/images/placeholder.png")
+                      : (item.image || item.product?.images?.[0] || "/images/placeholder.png")
+                    
+                    const productName = isCollaborative 
+                      ? item.productName 
+                      : (item.product?.name || item.name)
+                    
+                    const itemPrice = isCollaborative 
+                      ? item.productPrice 
+                      : (item.price || item.product?.salePrice)
                     
                     return (
                       <div key={index} className="flex items-center space-x-3 sm:space-x-4 p-3 border rounded-lg">
                         <ProductImage
                           src={productImage}
-                          alt={item.product?.name || item.name}
-                          productName={item.product?.name || item.name}
+                          alt={productName}
+                          productName={productName}
                           width={48}
                           height={48}
                           className="w-12 h-12 sm:w-16 sm:h-16"
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm sm:text-base truncate">{item.product?.name || item.name}</h4>
+                          <h4 className="font-medium text-sm sm:text-base truncate">{productName}</h4>
                           <p className="text-xs sm:text-sm text-gray-600">Quantity: {item.quantity}</p>
-                          <p className="text-xs sm:text-sm text-gray-600">Price: ${item.price || item.product?.salePrice}</p>
+                          <p className="text-xs sm:text-sm text-gray-600">Price: ${itemPrice}</p>
                         </div>
                       </div>
                     )
@@ -635,7 +757,7 @@ export default function DeliveryDashboard() {
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex justify-between items-center">
                     <span className="text-base sm:text-lg font-semibold">Total Amount:</span>
-                    <span className="text-base sm:text-lg font-bold text-purple-600">${order.total}</span>
+                    <span className="text-base sm:text-lg font-bold text-purple-600">${totalAmount}</span>
                   </div>
                 </div>
               </CardContent>
@@ -779,6 +901,18 @@ export default function DeliveryDashboard() {
                   <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
                     <Package className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 mb-1 sm:mb-0" />
                     <div>
+                      <p className="text-xs sm:text-sm font-medium text-gray-600">Collaborative</p>
+                      <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalCollaborativeGifts}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:space-x-2 text-center sm:text-left">
+                    <Package className="w-6 h-6 sm:w-8 sm:h-8 text-pink-600 mb-1 sm:mb-0" />
+                    <div>
                       <p className="text-xs sm:text-sm font-medium text-gray-600">Surprise Gifts</p>
                       <p className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalSurpriseGifts}</p>
                     </div>
@@ -814,6 +948,15 @@ export default function DeliveryDashboard() {
                     >
                       <Package className="w-4 h-4" />
                       <span>Regular Orders ({orders.length})</span>
+                    </Button>
+                    <Button 
+                      onClick={() => setOrderType("collaborative")}
+                      variant={orderType === "collaborative" ? "default" : "outline"}
+                      size="sm"
+                      className="flex items-center space-x-1"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Collaborative ({collaborativeGifts.length})</span>
                     </Button>
                     <Button 
                       onClick={() => setOrderType("surpriseGifts")}
@@ -908,14 +1051,14 @@ export default function DeliveryDashboard() {
                           </div>
                         </td>
                       </tr>
-                    ) : (orderType === "orders" ? orders : surpriseGifts).length === 0 ? (
+                    ) : getCurrentDataSet().length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                          No {orderType === "orders" ? "regular orders" : "surprise gifts"} found
+                          No {getCurrentDataLabel()} found
                         </td>
                       </tr>
                     ) : (
-                      (orderType === "orders" ? orders : surpriseGifts).map((order) => (
+                      getCurrentDataSet().map((order) => (
                         <tr key={order._id || order.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             #{order._id?.slice(-8) || order.id || 'N/A'}
@@ -923,41 +1066,102 @@ export default function DeliveryDashboard() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {order.user?.firstName || order.recipient?.name || 'N/A'} {order.user?.lastName || ''}
+                                {orderType === "collaborative" ? 
+                                  `${order.createdBy?.firstName || 'N/A'} ${order.createdBy?.lastName || ''}` :
+                                  `${order.user?.firstName || order.recipient?.name || 'N/A'} ${order.user?.lastName || ''}`
+                                }
                               </div>
-                              <div className="text-sm text-gray-500">{order.user?.email || order.recipient?.email || 'N/A'}</div>
-                              <div className="text-sm text-gray-500">{order.user?.phone || order.recipient?.phone || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">
+                                {orderType === "collaborative" ? 
+                                  (order.createdBy?.email || 'N/A') :
+                                  (order.user?.email || order.recipient?.email || 'N/A')
+                                }
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {orderType === "collaborative" ? 
+                                  (order.createdBy?.phone || 'N/A') :
+                                  (order.user?.phone || order.recipient?.phone || 'N/A')
+                                }
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              {order.items && order.items.length > 0 ? (
-                                <>
-                                  <ProductImage
-                                    src={order.items[0].product?.images?.[0] || order.items[0].image || "/images/placeholder.png"}
-                                    alt={order.items[0].product?.name || order.items[0].name}
-                                    productName={order.items[0].product?.name || order.items[0].name}
-                                    width={40}
-                                    height={40}
-                                  />
-                                  <div className="ml-3">
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {order.items[0].product?.name || order.items[0].name || 'Unknown Product'}
-                                    </div>
-                                    {order.items.length > 1 && (
-                                      <div className="text-sm text-gray-500">
-                                        +{order.items.length - 1} more items
+                              {/* Handle different data structures for different order types */}
+                              {orderType === "collaborative" ? (
+                                // Collaborative purchase structure
+                                order.products && order.products.length > 0 ? (
+                                  <>
+                                    <ProductImage
+                                      src={order.products[0].image || order.products[0].product?.images?.[0] || "/images/placeholder.png"}
+                                      alt={order.products[0].productName}
+                                      productName={order.products[0].productName}
+                                      width={40}
+                                      height={40}
+                                    />
+                                    <div className="ml-3">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {order.products[0].productName || 'Unknown Product'}
                                       </div>
-                                    )}
-                                  </div>
-                                </>
+                                      {order.products.length > 1 && (
+                                        <div className="text-sm text-gray-500">
+                                          +{order.products.length - 1} more items
+                                        </div>
+                                      )}
+                                    </div>
+                                  </>
+                                ) : order.productName ? (
+                                  // Single product collaborative purchase (legacy)
+                                  <>
+                                    <ProductImage
+                                      src="/images/placeholder.png"
+                                      alt={order.productName}
+                                      productName={order.productName}
+                                      width={40}
+                                      height={40}
+                                    />
+                                    <div className="ml-3">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {order.productName}
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-sm text-gray-500">No products</div>
+                                )
                               ) : (
-                                <div className="text-sm text-gray-500">No items</div>
+                                // Regular orders and surprise gifts structure
+                                order.items && order.items.length > 0 ? (
+                                  <>
+                                    <ProductImage
+                                      src={order.items[0].product?.images?.[0] || order.items[0].image || "/images/placeholder.png"}
+                                      alt={order.items[0].product?.name || order.items[0].name}
+                                      productName={order.items[0].product?.name || order.items[0].name}
+                                      width={40}
+                                      height={40}
+                                    />
+                                    <div className="ml-3">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {order.items[0].product?.name || order.items[0].name || 'Unknown Product'}
+                                      </div>
+                                      {order.items.length > 1 && (
+                                        <div className="text-sm text-gray-500">
+                                          +{order.items.length - 1} more items
+                                        </div>
+                                      )}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-sm text-gray-500">No items</div>
+                                )
                               )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${order.total?.toFixed(2) || order.amount?.toFixed(2) || '0.00'}
+                            ${orderType === "collaborative" ? 
+                                (order.totalAmount?.toFixed(2) || '0.00') :
+                                (order.total?.toFixed(2) || order.amount?.toFixed(2) || '0.00')
+                            }
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge className={getStatusBadgeColor(order.status)}>{order.status || 'Unknown'}</Badge>
@@ -1007,12 +1211,12 @@ export default function DeliveryDashboard() {
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                   </div>
-                ) : (orderType === "orders" ? orders : surpriseGifts).length === 0 ? (
+                ) : getCurrentDataSet().length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No {orderType === "orders" ? "regular orders" : "surprise gifts"} found
+                    No {getCurrentDataLabel()} found
                   </div>
                 ) : (
-                  (orderType === "orders" ? orders : surpriseGifts).map((order) => (
+                  getCurrentDataSet().map((order) => (
                     <Card key={order._id || order.id} className="border border-gray-200">
                       <CardContent className="p-4">
                         <div className="space-y-3">
@@ -1036,40 +1240,104 @@ export default function DeliveryDashboard() {
                           <div className="border-t pt-3">
                             <h4 className="text-sm font-medium text-gray-700 mb-1">Customer</h4>
                             <p className="text-sm text-gray-900">
-                              {order.user?.firstName || order.recipient?.name || 'N/A'} {order.user?.lastName || ''}
+                              {orderType === "collaborative" ? 
+                                `${order.createdBy?.firstName || 'N/A'} ${order.createdBy?.lastName || ''}` :
+                                `${order.user?.firstName || order.recipient?.name || 'N/A'} ${order.user?.lastName || ''}`
+                              }
                             </p>
-                            <p className="text-sm text-gray-500">{order.user?.email || order.recipient?.email || 'N/A'}</p>
-                            <p className="text-sm text-gray-500">{order.user?.phone || order.recipient?.phone || 'N/A'}</p>
+                            <p className="text-sm text-gray-500">
+                              {orderType === "collaborative" ? 
+                                (order.createdBy?.email || 'N/A') :
+                                (order.user?.email || order.recipient?.email || 'N/A')
+                              }
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {orderType === "collaborative" ? 
+                                (order.createdBy?.phone || 'N/A') :
+                                (order.user?.phone || order.recipient?.phone || 'N/A')
+                              }
+                            </p>
                           </div>
 
                           {/* Product Info */}
                           <div className="border-t pt-3">
                             <div className="flex items-center space-x-3">
-                              {order.items && order.items.length > 0 ? (
-                                <>
-                                  <ProductImage
-                                    src={order.items[0].product?.images?.[0] || order.items[0].image || "/images/placeholder.png"}
-                                    alt={order.items[0].product?.name || order.items[0].name}
-                                    productName={order.items[0].product?.name || order.items[0].name}
-                                    width={48}
-                                    height={48}
-                                  />
-                                  <div className="flex-1">
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {order.items[0].product?.name || order.items[0].name || 'Unknown Product'}
-                                    </div>
-                                    {order.items.length > 1 && (
-                                      <div className="text-sm text-gray-500">
-                                        +{order.items.length - 1} more items
+                              {/* Handle different data structures for different order types */}
+                              {orderType === "collaborative" ? (
+                                // Collaborative purchase structure
+                                order.products && order.products.length > 0 ? (
+                                  <>
+                                    <ProductImage
+                                      src={order.products[0].image || order.products[0].product?.images?.[0] || "/images/placeholder.png"}
+                                      alt={order.products[0].productName}
+                                      productName={order.products[0].productName}
+                                      width={48}
+                                      height={48}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {order.products[0].productName || 'Unknown Product'}
                                       </div>
-                                    )}
-                                    <div className="text-sm font-medium text-purple-600">
-                                      ${order.total?.toFixed(2) || order.amount?.toFixed(2) || '0.00'}
+                                      {order.products.length > 1 && (
+                                        <div className="text-sm text-gray-500">
+                                          +{order.products.length - 1} more items
+                                        </div>
+                                      )}
+                                      <div className="text-sm font-medium text-purple-600">
+                                        ${order.totalAmount?.toFixed(2) || '0.00'}
+                                      </div>
                                     </div>
-                                  </div>
-                                </>
+                                  </>
+                                ) : order.productName ? (
+                                  // Single product collaborative purchase (legacy)
+                                  <>
+                                    <ProductImage
+                                      src="/images/placeholder.png"
+                                      alt={order.productName}
+                                      productName={order.productName}
+                                      width={48}
+                                      height={48}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {order.productName}
+                                      </div>
+                                      <div className="text-sm font-medium text-purple-600">
+                                        ${order.totalAmount?.toFixed(2) || '0.00'}
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-sm text-gray-500">No products</div>
+                                )
                               ) : (
-                                <div className="text-sm text-gray-500">No items</div>
+                                // Regular orders and surprise gifts structure
+                                order.items && order.items.length > 0 ? (
+                                  <>
+                                    <ProductImage
+                                      src={order.items[0].product?.images?.[0] || order.items[0].image || "/images/placeholder.png"}
+                                      alt={order.items[0].product?.name || order.items[0].name}
+                                      productName={order.items[0].product?.name || order.items[0].name}
+                                      width={48}
+                                      height={48}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {order.items[0].product?.name || order.items[0].name || 'Unknown Product'}
+                                      </div>
+                                      {order.items.length > 1 && (
+                                        <div className="text-sm text-gray-500">
+                                          +{order.items.length - 1} more items
+                                        </div>
+                                      )}
+                                      <div className="text-sm font-medium text-purple-600">
+                                        ${order.total?.toFixed(2) || order.amount?.toFixed(2) || '0.00'}
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-sm text-gray-500">No items</div>
+                                )
                               )}
                             </div>
                           </div>
@@ -1323,41 +1591,82 @@ export default function DeliveryDashboard() {
                           #{item._id?.slice(-8) || item.id || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge className={item.type === 'order' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}>
-                            {item.type === 'order' ? 'Regular Order' : 'Surprise Gift'}
+                          <Badge className={
+                            item.type === 'order' ? 'bg-blue-100 text-blue-800' : 
+                            item.type === 'surprise-gift' ? 'bg-purple-100 text-purple-800' :
+                            'bg-green-100 text-green-800'
+                          }>
+                            {item.type === 'order' ? 'Regular Order' : 
+                             item.type === 'surprise-gift' ? 'Surprise Gift' :
+                             'Collaborative Gift'}
                           </Badge>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            {item.items && item.items.length > 0 && (
-                              <>
-                                <ProductImage
-                                  src={item.items[0].product?.images?.[0] || item.items[0].image || "/images/placeholder.png"}
-                                  alt={item.productName}
-                                  productName={item.productName}
-                                  width={40}
-                                  height={40}
-                                />
-                                <div className="ml-3">
-                                  <div className="text-sm font-medium text-gray-900">{item.productName}</div>
-                                  {item.items.length > 1 && (
-                                    <div className="text-sm text-gray-500">+{item.items.length - 1} more items</div>
-                                  )}
-                                </div>
-                              </>
+                            {item.type === 'collaborative-gift' ? (
+                              // Handle collaborative gift product display
+                              item.products && item.products.length > 0 ? (
+                                <>
+                                  <ProductImage
+                                    src={item.products[0].product?.images?.[0] || item.products[0].image || "/images/placeholder.png"}
+                                    alt={item.productName}
+                                    productName={item.productName}
+                                    width={40}
+                                    height={40}
+                                  />
+                                  <div className="ml-3">
+                                    <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                                    {item.products.length > 1 && (
+                                      <div className="text-sm text-gray-500">+{item.products.length - 1} more items</div>
+                                    )}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-sm text-gray-500">No product info</div>
+                              )
+                            ) : (
+                              // Handle regular orders and surprise gifts
+                              item.items && item.items.length > 0 && (
+                                <>
+                                  <ProductImage
+                                    src={item.items[0].product?.images?.[0] || item.items[0].image || "/images/placeholder.png"}
+                                    alt={item.productName}
+                                    productName={item.productName}
+                                    width={40}
+                                    height={40}
+                                  />
+                                  <div className="ml-3">
+                                    <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                                    {item.items.length > 1 && (
+                                      <div className="text-sm text-gray-500">+{item.items.length - 1} more items</div>
+                                    )}
+                                  </div>
+                                </>
+                              )
                             )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {item.user?.firstName || item.recipientName || 'N/A'} {item.user?.lastName || ''}
+                              {item.type === 'collaborative-gift' ? 
+                                `${item.createdBy?.firstName || 'N/A'} ${item.createdBy?.lastName || ''}` :
+                                `${item.user?.firstName || item.recipientName || 'N/A'} ${item.user?.lastName || ''}`
+                              }
                             </div>
-                            <div className="text-sm text-gray-500">{item.user?.email || 'N/A'}</div>
+                            <div className="text-sm text-gray-500">
+                              {item.type === 'collaborative-gift' ? 
+                                (item.createdBy?.email || 'N/A') :
+                                (item.user?.email || 'N/A')
+                              }
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${item.total?.toFixed(2) || '0.00'}
+                          ${item.type === 'collaborative-gift' ? 
+                            (item.totalAmount?.toFixed(2) || '0.00') :
+                            (item.total?.toFixed(2) || '0.00')
+                          }
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString() : 'N/A'}
@@ -1390,8 +1699,14 @@ export default function DeliveryDashboard() {
                         <div className="flex justify-between items-start">
                           <h3 className="font-medium text-gray-900">#{item._id?.slice(-8) || item.id || 'N/A'}</h3>
                           <div className="flex flex-col space-y-1">
-                            <Badge className={item.type === 'order' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}>
-                              {item.type === 'order' ? 'Regular Order' : 'Surprise Gift'}
+                            <Badge className={
+                              item.type === 'order' ? 'bg-blue-100 text-blue-800' : 
+                              item.type === 'surprise-gift' ? 'bg-purple-100 text-purple-800' :
+                              'bg-green-100 text-green-800'
+                            }>
+                              {item.type === 'order' ? 'Regular Order' : 
+                               item.type === 'surprise-gift' ? 'Surprise Gift' :
+                               'Collaborative Gift'}
                             </Badge>
                             <Badge className="bg-green-100 text-green-800">Delivered</Badge>
                           </div>
@@ -1399,25 +1714,52 @@ export default function DeliveryDashboard() {
                         
                         <div className="border-t pt-3">
                           <div className="flex items-center space-x-3">
-                            {item.items && item.items.length > 0 && (
-                              <>
-                                <ProductImage
-                                  src={item.items[0].product?.images?.[0] || item.items[0].image || "/images/placeholder.png"}
-                                  alt={item.productName}
-                                  productName={item.productName}
-                                  width={48}
-                                  height={48}
-                                />
-                                <div className="flex-1">
-                                  <div className="text-sm font-medium text-gray-900">{item.productName}</div>
-                                  {item.items.length > 1 && (
-                                    <div className="text-sm text-gray-500">+{item.items.length - 1} more items</div>
-                                  )}
-                                  <div className="text-sm font-medium text-purple-600">
-                                    ${item.total?.toFixed(2) || '0.00'}
+                            {item.type === 'collaborative-gift' ? (
+                              // Handle collaborative gift product display
+                              item.products && item.products.length > 0 ? (
+                                <>
+                                  <ProductImage
+                                    src={item.products[0].product?.images?.[0] || item.products[0].image || "/images/placeholder.png"}
+                                    alt={item.productName}
+                                    productName={item.productName}
+                                    width={48}
+                                    height={48}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                                    {item.products.length > 1 && (
+                                      <div className="text-sm text-gray-500">+{item.products.length - 1} more items</div>
+                                    )}
+                                    <div className="text-sm font-medium text-purple-600">
+                                      ${item.totalAmount?.toFixed(2) || '0.00'}
+                                    </div>
                                   </div>
-                                </div>
-                              </>
+                                </>
+                              ) : (
+                                <div className="text-sm text-gray-500">No product info</div>
+                              )
+                            ) : (
+                              // Handle regular orders and surprise gifts
+                              item.items && item.items.length > 0 && (
+                                <>
+                                  <ProductImage
+                                    src={item.items[0].product?.images?.[0] || item.items[0].image || "/images/placeholder.png"}
+                                    alt={item.productName}
+                                    productName={item.productName}
+                                    width={48}
+                                    height={48}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                                    {item.items.length > 1 && (
+                                      <div className="text-sm text-gray-500">+{item.items.length - 1} more items</div>
+                                    )}
+                                    <div className="text-sm font-medium text-purple-600">
+                                      ${item.total?.toFixed(2) || '0.00'}
+                                    </div>
+                                  </div>
+                                </>
+                              )
                             )}
                           </div>
                         </div>
@@ -1425,9 +1767,17 @@ export default function DeliveryDashboard() {
                         <div className="border-t pt-3">
                           <div className="text-sm">
                             <div className="font-medium text-gray-900">
-                              {item.user?.firstName || item.recipientName || 'N/A'} {item.user?.lastName || ''}
+                              {item.type === 'collaborative-gift' ? 
+                                `${item.createdBy?.firstName || 'N/A'} ${item.createdBy?.lastName || ''}` :
+                                `${item.user?.firstName || item.recipientName || 'N/A'} ${item.user?.lastName || ''}`
+                              }
                             </div>
-                            <div className="text-gray-500">{item.user?.email || 'N/A'}</div>
+                            <div className="text-gray-500">
+                              {item.type === 'collaborative-gift' ? 
+                                (item.createdBy?.email || 'N/A') :
+                                (item.user?.email || 'N/A')
+                              }
+                            </div>
                             <div className="text-gray-500 mt-1">
                               Delivered: {item.deliveryDate ? new Date(item.deliveryDate).toLocaleDateString() : 'N/A'}
                             </div>
