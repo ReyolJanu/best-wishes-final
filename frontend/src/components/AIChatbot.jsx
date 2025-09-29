@@ -158,46 +158,46 @@ const AIChatbot = ({ isOpen, onToggle }) => {
   };
 
   const ProductSuggestion = ({ product }) => (
-    <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex gap-3">
+    <div className="border rounded-lg p-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex gap-4">
         {product.images && product.images[0] && (
           <img
             src={product.images[0].url}
             alt={product.name}
-            className="w-20 h-20 object-cover rounded-md flex-shrink-0"
+            className="w-24 h-24 object-cover rounded-lg flex-shrink-0 border"
           />
         )}
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-sm text-gray-900 truncate">
+        <div className="flex-1 min-w-0 flex flex-col">
+          <h4 className="font-semibold text-sm text-gray-900 mb-1 leading-tight">
             {product.name}
           </h4>
-          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+          <p className="text-xs text-gray-600 mb-2 line-clamp-2 flex-1">
             {product.shortDescription}
           </p>
-          <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-purple-600">
+              <span className="font-bold text-base text-purple-600">
                 ${product.price}
               </span>
               {product.originalPrice > product.price && (
-                <span className="text-xs text-gray-500 line-through">
+                <span className="text-sm text-gray-500 line-through">
                   ${product.originalPrice}
                 </span>
               )}
             </div>
             {product.rating && (
               <div className="flex items-center gap-1">
-                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                <span className="text-xs text-gray-600">{product.rating}</span>
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <span className="text-sm font-medium text-gray-700">{product.rating}</span>
               </div>
             )}
           </div>
           <Button
             size="sm"
-            className="w-full mt-2 bg-purple-600 hover:bg-purple-700"
+            className="w-full mt-auto bg-purple-600 hover:bg-purple-700 text-sm py-2"
             onClick={() => window.open(`/productDetail/${product.id}`, '_self')}
           >
-            <ShoppingBag className="w-3 h-3 mr-1" />
+            <ShoppingBag className="w-4 h-4 mr-2" />
             View Product
           </Button>
         </div>
@@ -256,10 +256,10 @@ const AIChatbot = ({ isOpen, onToggle }) => {
               <div className="flex items-center gap-2 mb-3">
                 <Heart className="w-4 h-4 text-red-500" />
                 <span className="text-sm font-medium text-gray-700">
-                  Perfect Matches
+                  Perfect Matches ({message.suggestions.length})
                 </span>
               </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                 {message.suggestions.map((product, index) => (
                   <ProductSuggestion key={product.id || index} product={product} />
                 ))}
@@ -273,10 +273,10 @@ const AIChatbot = ({ isOpen, onToggle }) => {
               <div className="flex items-center gap-2 mb-3">
                 <ShoppingBag className="w-4 h-4 text-blue-500" />
                 <span className="text-sm font-medium text-gray-700">
-                  You Might Also Like
+                  You Might Also Like ({message.alternatives.length})
                 </span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 pr-1">
                 {message.alternatives.map((product, index) => (
                   <ProductSuggestion key={product.id || index} product={product} />
                 ))}

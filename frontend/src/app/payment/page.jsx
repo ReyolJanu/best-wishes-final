@@ -77,7 +77,7 @@ function PaymentForm({ clientSecret, amount, currency, product, qty, shipping, c
 							image: (product.images && product.images[0] && (product.images[0].url || product.images[0])) || "/placeholder.svg",
 							...(customization && { customization: {
 								id: customization._id,
-								selectedQuote: customization.selectedQuote,
+								selectedQuote: customization.selectedQuote || null,
 								customMessage: customization.customMessage,
 								fontStyle: customization.fontStyle,
 								fontSize: customization.fontSize,
@@ -303,7 +303,11 @@ export default function PaymentPage() {
 										<div className='text-sm text-[#5C5C5C] mt-1'>
 											<p>✨ Customized Product</p>
 											{customization.selectedQuote && (
-												<p className='italic'>"{customization.selectedQuote}"</p>
+												<p className='italic'>"{
+													typeof customization.selectedQuote === 'string' 
+														? customization.selectedQuote 
+														: customization.selectedQuote.text || customization.selectedQuote
+												}"</p>
 											)}
 											{customization.customMessage && (
 												<p className='italic'>Custom: "{customization.customMessage}"</p>

@@ -19,6 +19,48 @@ const ChatbotToggle = () => {
     setIsChatbotOpen(!isChatbotOpen);
   };
 
+  // Add dynamic gradient animation styles
+  const dynamicGradientStyle = {
+    background: 'linear-gradient(-45deg, #9333ea, #ec4899, #8b5cf6, #a855f7, #d946ef)',
+    backgroundSize: '400% 400%',
+    animation: 'gradientShift 4s ease infinite'
+  };
+
+  // Add CSS animation keyframes
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes gradientShift {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+      
+      .dynamic-gradient {
+        background: linear-gradient(-45deg, #9333ea, #ec4899, #8b5cf6, #a855f7, #d946ef);
+        background-size: 400% 400%;
+        animation: gradientShift 4s ease infinite;
+      }
+      
+      .dynamic-gradient-hover:hover {
+        background: linear-gradient(-45deg, #7c3aed, #db2777, #7c3aed, #9333ea, #c026d3);
+        background-size: 400% 400%;
+        animation: gradientShift 3s ease infinite;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // Auto-hide/show based on scroll (optional)
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -52,14 +94,15 @@ const ChatbotToggle = () => {
       } ${isChatbotOpen ? 'opacity-0 pointer-events-none' : ''}`}>
         <Button
           onClick={toggleChatbot}
-          className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          className="w-14 h-14 rounded-full dynamic-gradient dynamic-gradient-hover shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-0"
           size="lg"
+          style={dynamicGradientStyle}
         >
-          <MessageCircle className="w-6 h-6 text-white" />
+          <MessageCircle className="w-6 h-6 text-white drop-shadow-sm" />
         </Button>
         
-        {/* Pulse animation */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 animate-pulse opacity-75 -z-10"></div>
+        {/* Enhanced pulse animation with dynamic gradient */}
+        <div className="absolute inset-0 rounded-full dynamic-gradient animate-pulse opacity-30 -z-10" style={dynamicGradientStyle}></div>
         
         {/* Tooltip */}
         <div className="absolute bottom-full left-0 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">

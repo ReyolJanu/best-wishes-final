@@ -96,7 +96,11 @@ const CustomizePage = () => {
       const customizationData = {
         productId: product._id,
         customizationType: product.customizationType,
-        selectedQuote: selectedQuote ? { text: selectedQuote } : null,
+        selectedQuote: selectedQuote ? {
+          id: null, // No ID for hardcoded quotes
+          text: selectedQuote,
+          category: 'popular'
+        } : null,
         customMessage: selectedQuote ? '' : customMessage.trim(),
         fontStyle: 'Arial',
         fontSize: 16,
