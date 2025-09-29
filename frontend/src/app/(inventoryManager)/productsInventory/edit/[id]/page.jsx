@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Button } from "../../../../../../components/ui/button"
+import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
 import ProductForm from "../../../../(admin)/prodectmanage/components/ProductForm"
