@@ -167,12 +167,7 @@ export default function CollaborativeGiftManagement() {
         }
         return result;
       })()) ||
-      (activeTab === "processing" && (() => {
-        const allPaid = gift.participants?.every(p => p.paymentStatus === 'paid') && gift.participants?.length > 0;
-        const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined;
-        const isRefunded = gift.status?.toLowerCase() === 'refunded';
-        return !isCancelled && !isRefunded && allPaid;
-      })()) ||
+      (activeTab === "processing" && gift.status?.toLowerCase() === 'completed') ||
       (activeTab === "packing" && gift.status?.toLowerCase() === 'packing') ||
       (activeTab === "deliveryConfirmed" && gift.status?.toLowerCase() === 'outfordelivery') ||
       (activeTab === "all" && (gift.status?.toLowerCase() === 'delivered' || gift.status?.toLowerCase() === 'cancelled' || gift.status?.toLowerCase() === 'refunded'))
@@ -323,12 +318,7 @@ export default function CollaborativeGiftManagement() {
       const isRefunded = g.status?.toLowerCase() === 'refunded';
       return !isCancelled && !isRefunded && hasPending;
     }).length,
-    processing: collaborativeGifts.filter(g => {
-      const allPaid = g.participants?.every(p => p.paymentStatus === 'paid') && g.participants?.length > 0;
-      const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
-      const isRefunded = g.status?.toLowerCase() === 'refunded';
-      return !isCancelled && !isRefunded && allPaid;
-    }).length,
+    processing: collaborativeGifts.filter(g => g.status?.toLowerCase() === 'completed').length,
     packing: collaborativeGifts.filter(g => g.status?.toLowerCase() === 'packing').length,
     delivered: collaborativeGifts.filter(g => g.status?.toLowerCase() === 'outfordelivery').length,
     totalValue: collaborativeGifts.reduce((sum, gift) => sum + gift.total, 0),
@@ -832,12 +822,7 @@ export default function CollaborativeGiftManagement() {
                 }).length})
               </TabsTrigger>
               <TabsTrigger value="processing" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                Processing ({collaborativeGifts.filter(g => {
-                  const allPaid = g.participants?.every(p => p.paymentStatus === 'paid') && g.participants?.length > 0;
-                  const isCancelled = g.cancelledAt !== null && g.cancelledAt !== undefined;
-                  const isRefunded = g.status?.toLowerCase() === 'refunded';
-                  return !isCancelled && !isRefunded && allPaid;
-                }).length})
+                Processing ({collaborativeGifts.filter(g => g.status?.toLowerCase() === 'completed').length})
               </TabsTrigger>
               <TabsTrigger value="packing" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
                 Packing ({collaborativeGifts.filter(g => g.status?.toLowerCase() === 'packing').length})
@@ -950,7 +935,7 @@ export default function CollaborativeGiftManagement() {
                                       const giftId = gift._id
                                       
                                       try {
-                                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/surprise/${giftId}/cancel`, {
+                                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/${giftId}/cancel`, {
                                           method: 'PUT',
                                           credentials: 'include',
                                           headers: {
@@ -966,7 +951,7 @@ export default function CollaborativeGiftManagement() {
                                               prev.filter(g => g._id !== giftId)
                                             )
                                             
-                                            showToast('Surprise gift order cancelled successfully', 'success')
+                                            showToast('Collaborative gift order cancelled successfully', 'success')
                                           } else {
                                             showToast(data.message || 'Failed to cancel order', 'error')
                                           }
@@ -987,13 +972,7 @@ export default function CollaborativeGiftManagement() {
                               )}
 
                               {/* Processing Tab Actions */}
-                              {activeTab === 'processing' && (() => {
-                                const paidParticipants = gift.participants?.filter(p => p.paymentStatus === 'paid').length || 0
-                                const totalParticipants = gift.participants?.length || 0
-                                const allPaid = paidParticipants === totalParticipants && totalParticipants > 0
-                                const isCancelled = gift.cancelledAt !== null && gift.cancelledAt !== undefined
-                                return !isCancelled && allPaid && gift.status?.toLowerCase() === 'pending'
-                              })() && (
+                              {activeTab === 'processing' && gift.status?.toLowerCase() === 'completed' && (
                                 <>
                                   <Button
                                     size="sm"
@@ -1061,7 +1040,7 @@ export default function CollaborativeGiftManagement() {
                                       const giftId = gift._id
                                       
                                       try {
-                                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/surprise/${giftId}/cancel`, {
+                                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/collaborative-purchases/${giftId}/cancel`, {
                                           method: 'PUT',
                                           credentials: 'include',
                                           headers: {
@@ -1077,7 +1056,7 @@ export default function CollaborativeGiftManagement() {
                                               prev.filter(g => g._id !== giftId)
                                             )
                                             
-                                            showToast('Surprise gift order cancelled successfully', 'success')
+                                            showToast('Collaborative gift order cancelled successfully', 'success')
                                           } else {
                                             showToast(data.message || 'Failed to cancel order', 'error')
                                           }

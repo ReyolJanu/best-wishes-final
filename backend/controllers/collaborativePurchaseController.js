@@ -837,14 +837,7 @@ const getAllCollaborativePurchases = async (req, res) => {
         recipientPhone: purchase.createdBy?.phone || 'N/A',
         shippingAddress: 'Collaborative Purchase - Multiple Recipients',
         total: purchase.totalAmount,
-        status: purchase.status === 'Processing' ? 'Processing' :
-                purchase.status === 'pending' ? 'Pending' : 
-                purchase.status === 'completed' ? 'Pending' :
-                purchase.status === 'packing' ? 'Packing' :
-                purchase.status === 'outfordelivery' ? 'OutForDelivery' : 
-                purchase.status === 'delivered' ? 'Delivered' :
-                purchase.status === 'cancelled' ? 'Cancelled' :
-                purchase.status === 'refunded' ? 'Refunded' : 'Pending',
+        status: purchase.status,
         createdAt: purchase.createdAt,
         items: items,
         participants: purchase.participants,
