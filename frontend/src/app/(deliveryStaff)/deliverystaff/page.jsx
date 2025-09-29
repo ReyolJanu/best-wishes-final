@@ -939,12 +939,12 @@ export default function DeliveryDashboard() {
               <div className="flex flex-col space-y-4 mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Order Management</h2>
-                  <div className="flex space-x-2">
+                  <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
                     <Button 
                       onClick={() => setOrderType("orders")}
                       variant={orderType === "orders" ? "default" : "outline"}
                       size="sm"
-                      className="flex items-center space-x-1"
+                      className="flex items-center justify-center space-x-1 w-full sm:w-auto"
                     >
                       <Package className="w-4 h-4" />
                       <span>Regular Orders ({orders.length})</span>
@@ -953,7 +953,7 @@ export default function DeliveryDashboard() {
                       onClick={() => setOrderType("collaborative")}
                       variant={orderType === "collaborative" ? "default" : "outline"}
                       size="sm"
-                      className="flex items-center space-x-1"
+                      className="flex items-center justify-center space-x-1 w-full sm:w-auto"
                     >
                       <Package className="w-4 h-4" />
                       <span>Collaborative ({collaborativeGifts.length})</span>
@@ -962,7 +962,7 @@ export default function DeliveryDashboard() {
                       onClick={() => setOrderType("surpriseGifts")}
                       variant={orderType === "surpriseGifts" ? "default" : "outline"}
                       size="sm"
-                      className="flex items-center space-x-1"
+                      className="flex items-center justify-center space-x-1 w-full sm:w-auto"
                     >
                       <Package className="w-4 h-4" />
                       <span>Surprise Gifts ({surpriseGifts.length})</span>
