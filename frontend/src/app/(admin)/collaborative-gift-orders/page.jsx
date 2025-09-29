@@ -1077,7 +1077,7 @@ export default function CollaborativeGiftManagement() {
                               )}
 
                               {/* Packing Tab Actions */}
-                              {gift.status === 'Packing' && activeTab === 'packing' && (
+                              {gift.status?.toLowerCase() === 'packing' && activeTab === 'packing' && (
                                 <Button
                                   size="sm"
                                   onClick={() => updateGiftStatus(gift._id, 'OutForDelivery')}
@@ -1089,7 +1089,7 @@ export default function CollaborativeGiftManagement() {
                               )}
 
                               {/* Delivery Confirmed Tab Actions */}
-                              {gift.status === 'OutForDelivery' && activeTab === 'deliveryConfirmed' && (
+                              {gift.status?.toLowerCase() === 'outfordelivery' && activeTab === 'deliveryConfirmed' && (
                                 <Button
                                   size="sm"
                                   onClick={() => updateGiftStatus(gift._id, 'Delivered')}
@@ -1101,7 +1101,7 @@ export default function CollaborativeGiftManagement() {
                               )}
 
                               {/* All Orders Tab - Show completion status */}
-                              {gift.status === 'Delivered'  && activeTab === 'all' && (
+                              {gift.status?.toLowerCase() === 'delivered'  && activeTab === 'all' && (
                                 <Badge className="bg-green-100 text-green-800">
                                   ✅ Completed
                                 </Badge>
