@@ -6,6 +6,7 @@ import productReducer from './slices/productSlice';
 import cartReducer from './slices/cartSlice';
 import wishlistReducer from './slices/wishlistSlice';
 import categoryReducer from './slices/categorySlice';
+import { productSlice } from './allProducts/showcase/store';
 import { combineReducers } from 'redux';
 
 const persistConfig = {
@@ -20,6 +21,7 @@ const rootReducer = combineReducers({
   cartState: cartReducer,
   wishlistState: wishlistReducer,
   categoriesState: categoryReducer,
+  showcaseProducts: productSlice.reducer, // Add showcase filtering functionality
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

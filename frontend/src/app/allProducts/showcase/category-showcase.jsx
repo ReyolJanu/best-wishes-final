@@ -11,7 +11,7 @@ import { getAllProducts, fetchProductsFromDB } from "./sample-data"
 
 export function CategoryShowcase({ categoryName }) {
   const dispatch = useDispatch()
-  const { products, loading } = useSelector((state) => state.products)
+  const { products, loading } = useSelector((state) => state.showcaseProducts)
 
   // Load products on component mount
   useEffect(() => {

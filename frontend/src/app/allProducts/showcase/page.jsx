@@ -7,7 +7,6 @@ import { FilterSidebar } from "./filter-sidebar"
 import { CategoryExplorer } from "./category-explorer"
 import { SortingOptions } from "./sorting-options"
 import { MobileFilterDrawer } from "./mobile-filter-drawer"
-import { Providers } from "./providers"
 import { Toaster } from 'sonner'
 import Navbar from "../../components/navBar/page"
 
@@ -16,7 +15,7 @@ export default function ShowcasePage() {
   const categoryFromUrl = searchParams.get('category')
 
   return (
-    <Providers>
+    <>
       <Navbar />
       <div className="container mx-auto px-4 py-8">        {/* Header with cart */}
         <h1 className="text-3xl font-bold mb-6">
@@ -108,6 +107,6 @@ export default function ShowcasePage() {
         <MobileFilterDrawer />
       </div>
       <Toaster />
-    </Providers>
+    </>
   )
 }

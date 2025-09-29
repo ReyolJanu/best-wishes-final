@@ -6,7 +6,7 @@ import { useSelector } from "react-redux"
 
 export function MobileFilterDrawer({ initialCategory }) {
   const [isOpen, setIsOpen] = useState(false)
-  const { filters } = useSelector((state) => state.products)
+  const { filters } = useSelector((state) => state.showcaseProducts)
   const [activeFiltersCount, setActiveFiltersCount] = useState(0)
 
   // Calculate active filters count

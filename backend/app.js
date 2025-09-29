@@ -28,6 +28,7 @@ const testRoutes = require('./routes/testRoutes');
 const orderSummaryRoutes = require('./routes/orderSummaryRoutes');
 
 const reportRoutes = require('./routes/reportRoutes');
+const aiChatbotRoutes = require('./routes/aiChatbotRoutes');
 
 
 
@@ -76,6 +77,7 @@ app.use('/api/test', testRoutes);
 app.use('/api/order-summary', orderSummaryRoutes);
 
 app.use('/api', reportRoutes);
+app.use('/api/chatbot', aiChatbotRoutes);
 
 
 

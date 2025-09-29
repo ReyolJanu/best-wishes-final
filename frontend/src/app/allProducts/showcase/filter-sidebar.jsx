@@ -38,8 +38,8 @@ export function FilterSidebar() {
   
   const { category, filters } = useSelector(/** @param {RootState} state */(state) => {
     // Handle both custom store and main store structures
-    if (state.products && state.products.filters) {
-      return state.products.filters;
+    if (state.showcaseProducts && state.showcaseProducts.filters) {
+      return state.showcaseProducts.filters;
     }
     // Fallback for main store structure
     return {

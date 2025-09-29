@@ -3,6 +3,7 @@ import ReduxProvider from './ReduxProvider';
 import { Toaster } from 'sonner';
 import UserProfileHydrator from './components/UserProfileHydrator';
 import NotificationWrapper from '../components/NotificationWrapper';
+import ChatbotToggle from '../components/ChatbotToggle';
 
 export const metadata = {
   title: 'Best Wishes',
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
           <UserProfileHydrator />
           <NotificationWrapper>
             {children}
+            <ChatbotToggle />
             <Toaster position="top-center" richColors />
           </NotificationWrapper>
         </ReduxProvider>

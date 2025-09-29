@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 export function ProductShowcase({ filtered }) {
   const dispatch = useDispatch()
   const router = useRouter()
-  const { products, filteredProducts, loading, error } = useSelector((state) => state.products)
+  const { products, filteredProducts, loading, error } = useSelector((state) => state.showcaseProducts)
   const { isAuthenticated } = useSelector((state) => state.userState)
   const [realProducts, setRealProducts] = useState([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)

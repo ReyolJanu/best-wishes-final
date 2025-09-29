@@ -7,11 +7,11 @@ import { setCategory } from "./store"
 export function CategorySelector() {
   const dispatch = useDispatch()
   const router = useRouter()
-  const { category } = useSelector((state) => state.products.filters)
+  const { category } = useSelector((state) => state.showcaseProducts.filters)
 
   // Get unique categories from products
   const categories = useSelector((state) => {
-    return [...new Set(state.products.products.map((p) => p.category))]
+    return [...new Set(state.showcaseProducts.products.map((p) => p.category))]
   })
 
   const handleCategoryChange = (newCategory) => {
