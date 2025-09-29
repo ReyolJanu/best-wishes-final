@@ -528,14 +528,14 @@ export function OrderManagementSystem() {
                     <div>
                       <div class="info-item"><span class="label">Order ID:</span> <span class="value">${order.orderId}</span></div>
                       <div class="info-item"><span class="label">Order Date:</span> <span class="value">${new Date(order.orderDate).toLocaleDateString()} ${new Date(order.orderDate).toLocaleTimeString()}</span></div>
-                      <div class="info-item"><span class="label">Order Source:</span> <span class="value">${order.orderSource.replace('_', ' ').toUpperCase()}</span></div>
-                      <div class="info-item"><span class="label">Payment Method:</span> <span class="value">${order.paymentMethod.replace('_', ' ').toUpperCase()}</span></div>
+                      <div class="info-item"><span class="label">Order Source:</span> <span class="value">${order.orderSource?.replace('_', ' ').toUpperCase() || 'WEB'}</span></div>
+                      <div class="info-item"><span class="label">Payment Method:</span> <span class="value">${order.paymentMethod?.replace('_', ' ').toUpperCase() || 'N/A'}</span></div>
                     </div>
                     <div>
-                      <div class="info-item"><span class="label">Status:</span> <span class="status-badge status-${order.status}">${order.status.replace('_', ' ').toUpperCase()}</span></div>
-                      <div class="info-item"><span class="label">Priority:</span> <span class="value">${order.priority.toUpperCase()}</span></div>
-                      <div class="info-item"><span class="label">Estimated Delivery:</span> <span class="value">${order.estimatedTime}</span></div>
-                      <div class="info-item"><span class="label">Shipping Method:</span> <span class="value">${order.shippingMethod.replace('_', ' ').toUpperCase()}</span></div>
+                      <div class="info-item"><span class="label">Status:</span> <span class="status-badge status-${order.status}">${order.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}</span></div>
+                      <div class="info-item"><span class="label">Priority:</span> <span class="value">${order.priority?.toUpperCase() || 'NORMAL'}</span></div>
+                      <div class="info-item"><span class="label">Estimated Delivery:</span> <span class="value">${order.estimatedTime || '2-3 days'}</span></div>
+                      <div class="info-item"><span class="label">Shipping Method:</span> <span class="value">${order.shippingMethod?.replace('_', ' ').toUpperCase() || 'STANDARD'}</span></div>
                     </div>
                   </div>
                 </div>
@@ -1548,7 +1548,7 @@ export function OrderManagementSystem() {
                                   <div className="text-xs text-orange-600 font-medium">💵 COD: ${order.codAmount}</div>
                                 )}
                                 <div className="text-xs text-muted-foreground">
-                                  {order.paymentMethod.replace("_", " ")}
+                                  {order.paymentMethod?.replace("_", " ") || "N/A"}
                                 </div>
                               </div>
                             </TableCell>
